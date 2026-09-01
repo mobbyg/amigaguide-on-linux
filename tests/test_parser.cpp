@@ -1,4 +1,5 @@
 #include "amigaguide/parser.h"
+#include "amigaguide/renderer.h"
 
 #include <cassert>
 #include <string>
@@ -9,7 +10,8 @@ int main()
         "@database TestGuide\n"
         "@author Rich\n"
         "@node main Main Node\n"
-        "Hello world.\n"
+        "Hello @{B}world@{UB}.\n"
+        "@{\"Second page\" LINK \"second\"}\n"
         "@next second\n"
         "@endnode\n"
         "@node second \"Second Node\"\n"
@@ -27,5 +29,10 @@ int main()
     assert(document.find_node("SECOND")->prev == "main");
     assert(document.metadata().name == "TestGuide");
     assert(document.metadata().author == "Rich");
+
+    const auto html = amigaguide::render_node_html(document, *document.find_node("main"));
+    assert(html.find("font-weight:bold") != std::string::npos);
+    assert(html.find("href=\"node:second\"") != std::string::npos);
+    assert(html.find("Second page") != std::string::npos);
     return 0;
 }
