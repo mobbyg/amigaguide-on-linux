@@ -34,6 +34,23 @@ AmigaGuide file
 
 The Linux project uses the AROS `amigaguide.datatype` as a format/behavior reference and reimplements the presentation layer natively. We do not port the AROS Intuition/RastPort datatype framework into the Qt application.
 
+## Current status
+
+The first rich-rendering milestone is now implemented. The Qt reader renders node bodies and supports a useful initial set of AmigaGuide text attributes:
+
+- bold / italic / underline
+- foreground and background colors for common named colors
+- left / centered / right alignment
+- indentation
+- paragraph, line and tab handling
+- clickable `LINK` attributes between nodes
+- node anchors and `NEXT` / `PREV` navigation links
+- safe handling of unsupported action links (they are not executed)
+
+A deliberately comprehensive test document is included at `tests/data/formatting-test.guide`. It is intended to be opened directly in the application while developing the renderer.
+
+This is intentionally not yet a claim of complete AmigaGuide compatibility. The next work will expand the parser/renderer against real AmigaGuide documents and the AROS implementation.
+
 ## Initial targets
 
 - Parse `.guide` files and identify global metadata and nodes.
@@ -51,8 +68,12 @@ AROS is distributed under the AROS Public License. If AROS source is copied or a
 
 ## Build
 
-The intended build system is CMake and Qt 6. The first milestone is a small native parser/library and a minimal Qt viewer.
+The intended build system is CMake and Qt 6. On Debian/Ubuntu-style Linux systems, install `cmake`, `ninja-build`, `g++`, and `qt6-base-dev`, then:
 
-## Status
+```sh
+cmake -S . -B build -G Ninja
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
 
-Early development.
+The GitHub Actions workflow performs the same build and test sequence on Ubuntu.
