@@ -1,0 +1,82 @@
+@database "AmigaGuide Linux Test"
+@wordwrap
+@author "AmigaGuide on Linux"
+@copyright "Test document"
+
+@node main "AmigaGuide on Linux Test"
+@toc "main"
+@index "index"
+@help "help"
+@next formatting
+
+@{B}AmigaGuide on Linux@{UB}
+
+This is a deliberately small test document for the native Linux reader. It exercises formatting, links, node navigation, and common AmigaGuide attributes.
+
+@{B}Bold@{UB}  @{I}Italic@{UI}  @{U}Underline@{UU}
+
+@{FG red}Red text@{FG black} and @{FG blue}blue text@{FG black}.
+
+@{BG yellow}Highlighted text@{BG white}
+
+@{JLEFT}Left aligned text.
+@{JCENTER}Centered text.
+@{JRIGHT}Right aligned text.
+@{JLEFT}
+
+@{LINDENT 3}Indented text.@{LINDENT 0}
+
+@{"Go to the formatting test" LINK "formatting"}
+@{"Go to the help node" LINK "help"}
+@{"Go to the index" LINK "index"}
+
+@{PAR}
+This paragraph follows an explicit @PAR command.
+
+@endnode
+
+@node formatting "Formatting and Links"
+@prev main
+@next help
+
+@{B}Formatting and Links@{UB}
+
+The Linux reader should display this node as rich text instead of showing the AmigaGuide markup.
+
+@{I}Italic text can contain @{B}bold text@{UB} and return to italic.@{UI}
+
+Here is a link back to @{"the main node" LINK "main"}.
+
+Here is a link to @{"the help node" LINK "help"}.
+
+@{LINDENT 2}@{FG green}This line is green and indented.@{FG black}@{LINDENT 0}
+
+@endnode
+
+@node help "Help"
+@prev formatting
+@next index
+
+@{B}Help@{UB}
+
+This node exists to test the @HELP target and ordinary node navigation.
+
+The Linux reader intentionally does not execute AmigaDOS or ARexx action commands. Links that would execute commands should be displayed safely rather than executed.
+
+@{"Back to main" LINK "main"}
+
+@endnode
+
+@node index "Index"
+@prev help
+@next main
+
+@{B}Index@{UB}
+
+Test topics:
+
+@{LINDENT 2}@{"Formatting" LINK "formatting"}@{LINDENT 0}
+@{LINDENT 2}@{"Help" LINK "help"}@{LINDENT 0}
+@{LINDENT 2}@{"Main" LINK "main"}@{LINDENT 0}
+
+@endnode
