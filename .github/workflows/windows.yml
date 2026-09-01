@@ -1,0 +1,42 @@
+name: Windows Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6 with MinGW
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_mingw'
+          tools: 'tools_mingw1310'
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Deploy Qt runtime
+        run: |
+          mkdir package
+          copy build\amigaguide-reader.exe package\
+          windeployqt --release --no-translations package\amigaguide-reader.exe
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: amigaguide-reader-windows-x64
+          path: package/
