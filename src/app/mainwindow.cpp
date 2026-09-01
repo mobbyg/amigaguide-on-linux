@@ -6,10 +6,10 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QTextBrowser>
-#include <QTextStream>
 #include <QUrl>
 
 #include "amigaguide/parser.h"
+#include "amigaguide/renderer.h"
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), viewer_(new QTextBrowser(this))
@@ -25,7 +25,6 @@ MainWindow::MainWindow(QWidget* parent)
     file_menu->addAction(tr("E&xit"), this, &QWidget::close, QKeySequence::Quit);
 
     connect(viewer_, &QTextBrowser::anchorClicked, this, &MainWindow::openLink);
-
     viewer_->setOpenExternalLinks(false);
     viewer_->setOpenLinks(false);
     viewer_->setPlaceholderText(tr("Open an AmigaGuide file to begin."));
@@ -55,22 +54,26 @@ void MainWindow::openFile()
     }
 
     QString html;
-    html += QStringLiteral("<html><body>");
-    html += QStringLiteral("<h1>%1</h1>").arg(QFileInfo(path).fileName().toHtmlEscaped());
-    html += QStringLiteral("<p><b>Nodes:</b> %1</p>").arg(document.nodes().size());
+    html += QStringLiteral("<html><head><style>");
+    html += QStringLiteral("body{font-family:sans-serif;margin:18px;}h1{margin-bottom:12px;}a{font-weight:600;}p.meta{color:#666;}");
+    html += QStringLiteral("</style></head><body>");
+    html += QStringLiteral("<p class=\"meta\"><b>Database:</b> %1 &nbsp; <b>Nodes:</b> %2</p>")
+                .arg(QString::fromStdString(document.metadata().name).toHtmlEscaped())
+                .arg(document.nodes().size());
 
     for (const auto& node : document.nodes()) {
-        html += QStringLiteral("<hr><h2 id=\"%1\">%2</h2>")
-                    .arg(QString::fromStdString(node.name).toHtmlEscaped(),
-                         QString::fromStdString(node.title).toHtmlEscaped());
+        html += QString::fromStdString(amigaguide::render_node_html(document, node));
+        html += QStringLiteral("<p>");
+        if (!node.prev.empty()) {
+            html += QStringLiteral("<a href=\"node:%1\">&lt; Previous</a>")
+                        .arg(QString::fromStdString(node.prev).toHtmlEscaped());
+            html += QStringLiteral(" &nbsp; ");
+        }
         if (!node.next.empty()) {
-            html += QStringLiteral("<p><a href=\"node:%1\">Next: %1</a></p>")
+            html += QStringLiteral("<a href=\"node:%1\">Next &gt;</a>")
                         .arg(QString::fromStdString(node.next).toHtmlEscaped());
         }
-        if (!node.prev.empty()) {
-            html += QStringLiteral("<p><a href=\"node:%1\">Previous: %1</a></p>")
-                        .arg(QString::fromStdString(node.prev).toHtmlEscaped());
-        }
+        html += QStringLiteral("</p>");
     }
     html += QStringLiteral("</body></html>");
 
@@ -80,7 +83,8 @@ void MainWindow::openFile()
 
 void MainWindow::openLink(const QUrl& url)
 {
-    if (url.scheme() == QStringLiteral("node")) {
-        viewer_->scrollToAnchor(url.path());
-    }
+    if (url.scheme() != QStringLiteral("node")) return;
+
+    const QString target = url.path().isEmpty() ? url.host() : url.path();
+    viewer_->scrollToAnchor(target);
 }
