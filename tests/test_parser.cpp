@@ -22,12 +22,18 @@ int main()
     const std::string guide =
         "@database TestGuide\n"
         "@author Rich\n"
+        "@font Topaz.font 8\n"
         "@node main Main Node\n"
+        "@title \"Main Page\"\n"
+        "@font Courier.font 12\n"
+        "@tab 4\n"
+        "@wordwrap\n"
         "Hello @{B}world@{UB}.\n"
         "@{\"Second page\" LINK \"second\"}\n"
-        "@next second\n"
+        "@next \"second\"\n"
         "@endnode\n"
-        "@node second \"Second Node\"\n"
+        "@node \"second\" \"Second Node\"\n"
+        "@proportional\n"
         "Second text.\n"
         "@prev main\n"
         "@endnode\n";
@@ -44,15 +50,28 @@ int main()
     const auto* second_node = document.find_node("SECOND");
     if (!check(main_node != nullptr, "main node should exist")) return 1;
     if (!check(second_node != nullptr, "second node should exist")) return 1;
+    if (!check(main_node->title == "Main Page", "@TITLE should override the node title")) return 1;
+    if (!check(main_node->font == "Courier.font 12", "node font should be parsed")) return 1;
+    if (!check(main_node->tab_width == 4, "node tab width should be parsed")) return 1;
+    if (!check(main_node->word_wrap, "node word wrapping should be enabled")) return 1;
+    if (!check(second_node->proportional, "@PROPORTIONAL should be parsed")) return 1;
     if (!check(main_node->next == "second", "main node should link to second")) return 1;
     if (!check(second_node->prev == "main", "second node should link back to main")) return 1;
     if (!check(document.metadata().name == "TestGuide", "database name should be parsed")) return 1;
     if (!check(document.metadata().author == "Rich", "author should be parsed")) return 1;
+    if (!check(document.metadata().font == "Topaz.font 8", "global font should be parsed")) return 1;
 
     const auto html = amigaguide::render_node_html(document, *main_node);
     if (!check(html.find("font-weight:bold") != std::string::npos, "bold formatting should render")) return 1;
     if (!check(html.find("href=\"node:second\"") != std::string::npos, "node link should render")) return 1;
     if (!check(html.find("Second page") != std::string::npos, "link label should render")) return 1;
+
+    amigaguide::Document malformed;
+    const std::string malformed_guide =
+        "@database Broken\n"
+        "@node main\n"
+        "Missing end node\n";
+    if (!check(!parser.parse(malformed_guide, malformed, &error), "unterminated node should be rejected")) return 1;
 
     return 0;
 }
