@@ -172,7 +172,7 @@ void MainWindow::navigateToNode(const QString& node, bool add_history)
     const QString target = node.startsWith(QLatin1Char('/')) ? node.mid(1) : node;
     if (!document_.find_node(target.toStdString())) return;
 
-    if (add_history) navigation_history_.visit(target);
+    if (add_history) navigation_history_.visit(target.toStdString());
 
     viewer_->scrollToAnchor(target);
     updateNavigationActions();
@@ -181,14 +181,14 @@ void MainWindow::navigateToNode(const QString& node, bool add_history)
 void MainWindow::navigateBack()
 {
     if (!navigation_history_.back()) return;
-    viewer_->scrollToAnchor(navigation_history_.current());
+    viewer_->scrollToAnchor(QString::fromStdString(navigation_history_.current()));
     updateNavigationActions();
 }
 
 void MainWindow::navigateForward()
 {
     if (!navigation_history_.forward()) return;
-    viewer_->scrollToAnchor(navigation_history_.current());
+    viewer_->scrollToAnchor(QString::fromStdString(navigation_history_.current()));
     updateNavigationActions();
 }
 
