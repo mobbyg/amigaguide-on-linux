@@ -1,7 +1,6 @@
 #pragma once
 
-#include <QString>
-
+#include <string>
 #include <vector>
 
 namespace amigaguide {
@@ -17,7 +16,7 @@ public:
     // Visit a destination. If the destination is already current, no new
     // history entry is created. Visiting after going Back discards Forward
     // history, matching normal browser behavior.
-    void visit(const QString& destination);
+    void visit(const std::string& destination);
 
     bool back();
     bool forward();
@@ -25,10 +24,10 @@ public:
     bool can_back() const;
     bool can_forward() const;
     bool empty() const;
-    const QString& current() const;
+    const std::string& current() const;
 
 private:
-    std::vector<QString> entries_;
+    std::vector<std::string> entries_;
     int index_ = -1;
 };
 
