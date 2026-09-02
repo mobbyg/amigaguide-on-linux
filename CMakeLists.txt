@@ -16,6 +16,7 @@ add_library(amigaguide
     src/amigaguide/document.cpp
     src/amigaguide/parser.cpp
     src/amigaguide/renderer_model.cpp
+    src/amigaguide/search.cpp
 )
 
 target_include_directories(amigaguide
