@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QSignalBlocker>
 #include <QStyle>
 #include <QTextBrowser>
 #include <QTextCursor>
@@ -220,6 +221,7 @@ void MainWindow::searchText()
         return;
     }
 
+    viewer_->moveCursor(QTextCursor::Start);
     viewer_->find(search_box_->text());
     updateSearchStatus();
 }
