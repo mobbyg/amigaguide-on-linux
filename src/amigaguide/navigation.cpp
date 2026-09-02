@@ -8,9 +8,9 @@ void NavigationHistory::clear()
     index_ = -1;
 }
 
-void NavigationHistory::visit(const QString& destination)
+void NavigationHistory::visit(const std::string& destination)
 {
-    if (destination.isEmpty()) return;
+    if (destination.empty()) return;
 
     if (index_ >= 0 && index_ < static_cast<int>(entries_.size()) &&
         entries_[index_] == destination) {
@@ -54,9 +54,9 @@ bool NavigationHistory::empty() const
     return entries_.empty();
 }
 
-const QString& NavigationHistory::current() const
+const std::string& NavigationHistory::current() const
 {
-    static const QString empty_destination;
+    static const std::string empty_destination;
     if (index_ < 0 || index_ >= static_cast<int>(entries_.size())) return empty_destination;
     return entries_[index_];
 }
