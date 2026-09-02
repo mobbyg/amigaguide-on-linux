@@ -101,10 +101,15 @@ void MainWindow::openFile()
         tr("AmigaGuide files (*.guide *.Guide);;Text files (*.txt);;All files (*)"));
     if (path.isEmpty()) return;
 
+    if (!loadDocumentFile(path, QString(), true)) return;
+}
+
+bool MainWindow::loadDocumentFile(const QString& path, const QString& requested_node, bool add_history)
+{
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        QMessageBox::critical(this, tr("Open failed"), file.errorString());
-        return;
+        statusBar()->showMessage(tr("Open failed: %1").arg(file.errorString()), 5000);
+        return false;
     }
 
     const QByteArray bytes = file.readAll();
@@ -112,13 +117,49 @@ void MainWindow::openFile()
     amigaguide::ParseError error;
     amigaguide::Parser parser;
     if (!parser.parse(bytes.toStdString(), parsed_document, &error)) {
-        QMessageBox::critical(this, tr("Parse failed"),
-                              tr("Line %1: %2").arg(error.line).arg(QString::fromStdString(error.message)));
-        return;
+        statusBar()->showMessage(
+            tr("Parse failed — line %1: %2")
+                .arg(error.line)
+                .arg(QString::fromStdString(error.message)),
+            5000);
+        return false;
     }
 
     document_ = std::move(parsed_document);
+    current_document_path_ = QFileInfo(path).absoluteFilePath();
+    renderDocument();
+    search_box_->clear();
 
+    if (!document_.metadata().toc.empty() && document_.find_node(document_.metadata().toc)) {
+        home_node_ = QString::fromStdString(document_.metadata().toc);
+    } else if (!document_.nodes().empty()) {
+        home_node_ = QString::fromStdString(document_.nodes().front().name);
+    } else {
+        home_node_.clear();
+    }
+
+    QString target_node = requested_node;
+    if (target_node.isEmpty() || !document_.find_node(target_node.toStdString())) {
+        target_node = home_node_;
+    }
+
+    if (!target_node.isEmpty()) {
+        viewer_->scrollToAnchor(target_node);
+        if (add_history) {
+            navigation_history_.visit(currentNodeDestination(target_node).uri());
+        }
+    } else if (add_history) {
+        navigation_history_.visit(QUrl::fromLocalFile(current_document_path_).toString(QUrl::FullyEncoded));
+    }
+
+    updateSearchStatus();
+    updateNavigationActions();
+    setWindowTitle(QStringLiteral("%1 — AmigaGuide on Linux").arg(QFileInfo(path).fileName()));
+    return true;
+}
+
+void MainWindow::renderDocument()
+{
     QString html;
     html += QStringLiteral("<html><head><style>");
     html += QStringLiteral("body{font-family:sans-serif;margin:18px;}h1{margin-bottom:12px;}a{font-weight:600;}p.meta{color:#666;}");
@@ -144,21 +185,17 @@ void MainWindow::openFile()
     html += QStringLiteral("</body></html>");
 
     viewer_->setHtml(html);
-    search_box_->clear();
-    navigation_history_.clear();
+}
 
-    if (!document_.metadata().toc.empty() && document_.find_node(document_.metadata().toc)) {
-        home_node_ = QString::fromStdString(document_.metadata().toc);
-    } else if (!document_.nodes().empty()) {
-        home_node_ = QString::fromStdString(document_.nodes().front().name);
-    } else {
-        home_node_.clear();
+amigaguide::Destination MainWindow::currentNodeDestination(const QString& node) const
+{
+    if (current_document_path_.isEmpty()) {
+        return amigaguide::Destination::node(node.toStdString());
     }
 
-    if (!home_node_.isEmpty()) navigateToNode(home_node_);
-    updateSearchStatus();
-    updateNavigationActions();
-    setWindowTitle(QStringLiteral("%1 — AmigaGuide on Linux").arg(QFileInfo(path).fileName()));
+    QUrl url = QUrl::fromLocalFile(current_document_path_);
+    url.setFragment(node);
+    return amigaguide::Destination::parse(url.toString(QUrl::FullyEncoded).toStdString());
 }
 
 void MainWindow::openLink(const QUrl& url)
@@ -173,7 +210,7 @@ void MainWindow::openLink(const QUrl& url)
 
 void MainWindow::navigateToNode(const QString& node, bool add_history)
 {
-    navigateToDestination(amigaguide::Destination::node(node.toStdString()), add_history);
+    navigateToDestination(currentNodeDestination(node), add_history);
 }
 
 void MainWindow::navigateToDestination(const amigaguide::Destination& destination, bool add_history)
@@ -188,15 +225,42 @@ void MainWindow::navigateToDestination(const amigaguide::Destination& destinatio
         const QString target = QString::fromStdString(resolution.value);
         if (target.isEmpty() || !document_.find_node(resolution.value)) return;
 
-        if (add_history) navigation_history_.visit(destination.uri());
+        if (add_history) navigation_history_.visit(currentNodeDestination(target).uri());
 
         viewer_->scrollToAnchor(target);
         updateNavigationActions();
         return;
     }
-    case amigaguide::ResolutionKind::LocalFile:
-        statusBar()->showMessage(tr("Local document navigation is not implemented yet"), 3000);
+    case amigaguide::ResolutionKind::LocalFile: {
+        QUrl target_url(QString::fromStdString(resolution.value));
+        if (!target_url.isValid() || target_url.scheme().compare(QStringLiteral("file"), Qt::CaseInsensitive) != 0) {
+            statusBar()->showMessage(tr("Invalid local file target"), 3000);
+            return;
+        }
+
+        if (target_url.isRelative() && !current_document_path_.isEmpty()) {
+            target_url = QUrl::fromLocalFile(current_document_path_).resolved(target_url);
+        }
+
+        const QString path = target_url.toLocalFile();
+        if (path.isEmpty()) {
+            statusBar()->showMessage(tr("Invalid local file target"), 3000);
+            return;
+        }
+
+        const QString node = target_url.fragment(QUrl::FullyDecoded);
+        if (!loadDocumentFile(path, node, false)) return;
+
+        if (add_history) {
+            QString history_uri = QUrl::fromLocalFile(current_document_path_).toString(QUrl::FullyEncoded);
+            if (!node.isEmpty() && document_.find_node(node.toStdString())) {
+                history_uri += QStringLiteral("#") + QString::fromUtf8(QUrl::toPercentEncoding(node));
+            }
+            navigation_history_.visit(history_uri.toStdString());
+        }
+        updateNavigationActions();
         return;
+    }
     case amigaguide::ResolutionKind::RemoteHttp:
         statusBar()->showMessage(tr("Remote document navigation is not implemented yet"), 3000);
         return;
