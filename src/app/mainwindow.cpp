@@ -149,7 +149,7 @@ bool MainWindow::loadDocumentFile(const QString& path, const QString& requested_
             navigation_history_.visit(currentNodeDestination(target_node).uri());
         }
     } else if (add_history) {
-        navigation_history_.visit(QUrl::fromLocalFile(current_document_path_).toString(QUrl::FullyEncoded));
+        navigation_history_.visit(QUrl::fromLocalFile(current_document_path_).toString(QUrl::FullyEncoded).toStdString());
     }
 
     updateSearchStatus();
