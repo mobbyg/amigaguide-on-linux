@@ -17,6 +17,7 @@
 #include <QUrl>
 #include <QWidget>
 
+#include "amigaguide/destination_resolver.h"
 #include "amigaguide/parser.h"
 #include "amigaguide/renderer.h"
 #include "amigaguide/search.h"
@@ -162,7 +163,10 @@ void MainWindow::openFile()
 void MainWindow::openLink(const QUrl& url)
 {
     const auto destination = amigaguide::Destination::parse(url.toString().toStdString());
-    if (!destination.valid()) return;
+    if (!destination.valid()) {
+        statusBar()->showMessage(tr("Unsupported navigation target"), 3000);
+        return;
+    }
     navigateToDestination(destination);
 }
 
@@ -175,19 +179,33 @@ void MainWindow::navigateToDestination(const amigaguide::Destination& destinatio
 {
     if (!destination.valid()) return;
 
-    if (destination.type() != amigaguide::DestinationType::Node) {
-        // Remote and library destinations are represented by the model now,
-        // but their loaders are intentionally separate future components.
+    amigaguide::LocalDestinationResolver resolver;
+    const auto resolution = resolver.resolve(destination);
+
+    switch (resolution.kind) {
+    case amigaguide::ResolutionKind::InternalNode: {
+        const QString target = QString::fromStdString(resolution.value);
+        if (target.isEmpty() || !document_.find_node(resolution.value)) return;
+
+        if (add_history) navigation_history_.visit(destination.uri());
+
+        viewer_->scrollToAnchor(target);
+        updateNavigationActions();
         return;
     }
-
-    const QString target = QString::fromStdString(destination.value());
-    if (target.isEmpty() || !document_.find_node(destination.value())) return;
-
-    if (add_history) navigation_history_.visit(destination.uri());
-
-    viewer_->scrollToAnchor(target);
-    updateNavigationActions();
+    case amigaguide::ResolutionKind::LocalFile:
+        statusBar()->showMessage(tr("Local document navigation is not implemented yet"), 3000);
+        return;
+    case amigaguide::ResolutionKind::RemoteHttp:
+        statusBar()->showMessage(tr("Remote document navigation is not implemented yet"), 3000);
+        return;
+    case amigaguide::ResolutionKind::LibraryDocument:
+        statusBar()->showMessage(tr("AmigaGuide Library navigation is not implemented yet"), 3000);
+        return;
+    case amigaguide::ResolutionKind::Invalid:
+        statusBar()->showMessage(tr("Unsupported navigation target"), 3000);
+        return;
+    }
 }
 
 void MainWindow::navigateBack()
