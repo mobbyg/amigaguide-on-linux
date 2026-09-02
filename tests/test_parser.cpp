@@ -1,5 +1,6 @@
 #include "amigaguide/parser.h"
 #include "amigaguide/renderer.h"
+#include "amigaguide/search.h"
 
 #include <iostream>
 #include <string>
@@ -29,12 +30,14 @@ int main()
         "@tab 4\n"
         "@wordwrap\n"
         "Hello @{B}world@{UB}.\n"
+        "Hello again.\n"
         "@{\"Second page\" LINK \"second\"}\n"
         "@next \"second\"\n"
         "@endnode\n"
         "@node \"second\" \"Second Node\"\n"
         "@proportional\n"
         "Second text.\n"
+        "WORLD appears here too.\n"
         "@prev main\n"
         "@endnode\n";
 
@@ -65,6 +68,18 @@ int main()
     if (!check(html.find("font-weight:bold") != std::string::npos, "bold formatting should render")) return 1;
     if (!check(html.find("href=\"node:second\"") != std::string::npos, "node link should render")) return 1;
     if (!check(html.find("Second page") != std::string::npos, "link label should render")) return 1;
+
+    amigaguide::SearchEngine search;
+    const auto world_matches = search.find(document, "world");
+    if (!check(world_matches.size() == 2, "case-insensitive search should find both world matches")) return 1;
+    if (!check(world_matches[0].node_index == 0 && world_matches[1].node_index == 1,
+               "search results should be returned in document order")) return 1;
+
+    const auto exact_matches = search.find(document, "WORLD", true);
+    if (!check(exact_matches.size() == 1 && exact_matches[0].node_index == 1,
+               "case-sensitive search should find only the exact match")) return 1;
+    if (!check(search.find(document, "missing").empty(), "missing search should return no matches")) return 1;
+    if (!check(search.find(document, "").empty(), "empty search should return no matches")) return 1;
 
     amigaguide::Document malformed;
     const std::string malformed_guide =
