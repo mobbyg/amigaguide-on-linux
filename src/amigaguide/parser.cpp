@@ -17,12 +17,6 @@ std::string lower(std::string_view value)
     return out;
 }
 
-std::string first_token(std::string_view value)
-{
-    const auto p = value.find_first_of(" \t\r\n");
-    return std::string(value.substr(0, p));
-}
-
 std::string unquote(std::string value)
 {
     if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
@@ -30,6 +24,23 @@ std::string unquote(std::string value)
         value.pop_back();
     }
     return value;
+}
+
+// Read the first whitespace-delimited argument, honoring quoted arguments.
+// AmigaGuide uses quotes when an option contains spaces.
+std::string first_token(std::string_view value)
+{
+    while (!value.empty() && std::isspace(static_cast<unsigned char>(value.front()))) value.remove_prefix(1);
+    if (value.empty()) return {};
+
+    if (value.front() == '"') {
+        const auto end = value.find('"', 1);
+        if (end == std::string_view::npos) return std::string(value.substr(1));
+        return std::string(value.substr(1, end - 1));
+    }
+
+    const auto p = value.find_first_of(" \t\r\n");
+    return std::string(value.substr(0, p));
 }
 
 } // namespace
@@ -55,22 +66,27 @@ bool Parser::command(std::string_view line, std::string& name, std::string& args
 
 bool Parser::node_header(std::string_view args, Node& node)
 {
-    args = std::string_view(args.data(), args.size());
     while (!args.empty() && std::isspace(static_cast<unsigned char>(args.front()))) args.remove_prefix(1);
     if (args.empty()) return false;
 
-    const auto p = args.find_first_of(" \t");
-    node.name = unquote(std::string(args.substr(0, p)));
-    if (p != std::string_view::npos) {
-        std::string rest = trim(args.substr(p + 1));
-        // AmigaGuide permits a title as the second quoted argument. Keep the
-        // remainder intact for now; later parsing can expose additional attrs.
-        if (!rest.empty() && rest.front() == '"') {
-            const auto q = rest.find('"', 1);
-            if (q != std::string::npos) node.title = rest.substr(1, q - 1);
-        }
+    node.name = first_token(args);
+    if (node.name.empty()) return false;
+
+    // The title is the second argument and may be quoted.
+    std::size_t consumed = 0;
+    if (args.front() == '"') {
+        const auto end = args.find('"', 1);
+        if (end == std::string_view::npos) return true;
+        consumed = end + 1;
+    } else {
+        const auto p = args.find_first_of(" \t");
+        consumed = p == std::string_view::npos ? args.size() : p;
     }
-    return !node.name.empty();
+
+    std::string_view rest = args.substr(consumed);
+    while (!rest.empty() && std::isspace(static_cast<unsigned char>(rest.front()))) rest.remove_prefix(1);
+    if (!rest.empty()) node.title = first_token(rest);
+    return true;
 }
 
 bool Parser::parse(std::string source, Document& document, ParseError* error) const
@@ -95,6 +111,10 @@ bool Parser::parse(std::string source, Document& document, ParseError* error) co
         if (!command(line, name, args)) continue;
 
         if (name == "node") {
+            if (current) {
+                if (error) *error = {line_number, "@NODE encountered before @ENDNODE"};
+                return false;
+            }
             document.nodes().push_back(Node{});
             current = &document.nodes().back();
             current->source_begin = line_begin;
@@ -106,45 +126,88 @@ bool Parser::parse(std::string source, Document& document, ParseError* error) co
         }
 
         if (name == "endnode") {
-            if (current) current->source_end = offset;
+            if (!current) {
+                if (error) *error = {line_number, "@ENDNODE without an active @NODE"};
+                return false;
+            }
+            current->source_end = offset;
             current = nullptr;
             continue;
         }
 
         if (name == "database" || name == "amigaguide") {
-            document.metadata().name = unquote(first_token(args));
+            document.metadata().name = first_token(args);
             continue;
         }
         if (name == "author") { document.metadata().author = args; continue; }
-        if (name == "version") { document.metadata().version = args; continue; }
+        if (name == "version" || name == "$ver:") { document.metadata().version = args; continue; }
         if (name == "copyright" || name == "(c)") { document.metadata().copyright = args; continue; }
         if (name == "font") {
-            if (current) current->title = current->title; else document.metadata().font = args;
+            if (current) current->font = args;
+            else document.metadata().font = args;
             continue;
         }
+        if (name == "title" && current) { current->title = first_token(args); continue; }
         if (name == "help") {
-            if (current) current->help = unquote(first_token(args)); else document.metadata().help = unquote(first_token(args));
+            if (current) current->help = first_token(args); else document.metadata().help = first_token(args);
             continue;
         }
         if (name == "toc") {
-            if (current) current->toc = unquote(first_token(args)); else document.metadata().toc = unquote(first_token(args));
+            if (current) current->toc = first_token(args); else document.metadata().toc = first_token(args);
             continue;
         }
         if (name == "index") {
-            if (current) current->index = unquote(first_token(args)); else document.metadata().index = unquote(first_token(args));
+            if (current) current->index = first_token(args); else document.metadata().index = first_token(args);
             continue;
         }
         if (name == "keywords" && current) { current->keywords = args; continue; }
-        if (name == "next" && current) { current->next = unquote(first_token(args)); continue; }
-        if (name == "prev" && current) { current->prev = unquote(first_token(args)); continue; }
-        if (name == "width") { try { document.metadata().width = std::stoi(first_token(args)); } catch (...) {} continue; }
-        if (name == "height") { try { document.metadata().height = std::stoi(first_token(args)); } catch (...) {} continue; }
-        if (name == "tab") { try { document.metadata().tab_width = std::stoi(first_token(args)); } catch (...) {} continue; }
-        if (name == "wordwrap") { document.metadata().word_wrap = true; continue; }
-        if (name == "smartwrap") { document.metadata().smart_wrap = true; continue; }
+        if (name == "next" && current) { current->next = first_token(args); continue; }
+        if (name == "prev" && current) { current->prev = first_token(args); continue; }
+        if (name == "onopen") {
+            if (current) current->on_open = args;
+            continue;
+        }
+        if (name == "onclose") {
+            if (current) current->on_close = args;
+            continue;
+        }
+        if (name == "width") {
+            try { document.metadata().width = std::stoi(first_token(args)); } catch (...) {}
+            continue;
+        }
+        if (name == "height") {
+            try { document.metadata().height = std::stoi(first_token(args)); } catch (...) {}
+            continue;
+        }
+        if (name == "tab") {
+            try {
+                const int width = std::stoi(first_token(args));
+                if (current) current->tab_width = width;
+                else document.metadata().tab_width = width;
+            } catch (...) {}
+            continue;
+        }
+        if (name == "wordwrap") {
+            if (current) current->word_wrap = true;
+            else document.metadata().word_wrap = true;
+            continue;
+        }
+        if (name == "smartwrap") {
+            if (current) current->smart_wrap = true;
+            else document.metadata().smart_wrap = true;
+            continue;
+        }
+        if (name == "proportional" && current) {
+            current->proportional = true;
+            continue;
+        }
     }
 
-    if (current) current->source_end = document.source().size();
+    if (current) {
+        if (error) *error = {line_number, "document ended before @ENDNODE"};
+        return false;
+    }
+
     return true;
 }
 

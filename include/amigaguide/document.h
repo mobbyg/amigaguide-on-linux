@@ -16,6 +16,13 @@ struct Node {
     std::string help;
     std::string toc;
     std::string index;
+    std::string font;
+    std::string on_open;
+    std::string on_close;
+    int tab_width = 0;
+    bool word_wrap = true;
+    bool smart_wrap = false;
+    bool proportional = false;
     std::size_t source_begin = 0;
     std::size_t source_end = 0;
 };
