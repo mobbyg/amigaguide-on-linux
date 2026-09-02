@@ -15,6 +15,7 @@ This document describes the AmigaGuide on Linux project: a modern AmigaGuide rea
 @{Ecosystem LINK Ecosystem}
 @{Library LINK Library}
 @{References LINK References}
+@endnode
 
 @node MainReader "The Reader"
 @prev Contents
@@ -25,6 +26,7 @@ AmigaGuide on Linux is a modern reader for AmigaGuide documents.
 The reader is intended to remain focused on reading AmigaGuide documents while supporting modern platforms. Current work targets Linux and Windows, with future investigation of AROS and AmigaOS support.
 
 The reader should also be able to resolve optional library references without becoming dependent on the library infrastructure.
+@endnode
 
 @node Project "The Project"
 @prev MainReader
@@ -35,6 +37,7 @@ The project is an open-source effort to give AmigaGuide a useful modern life whi
 The long-term goal is not simply to reproduce a legacy viewer. It is to make AmigaGuide useful again as a portable, interconnected hypertext and documentation format.
 
 A separate AmigaGuide Editor is planned as a Version 2 goal. The editor should be able to create new guides and edit existing guides while understanding AmigaGuide structure rather than acting only as a generic text editor.
+@endnode
 
 @node Ecosystem "The AmigaGuide Ecosystem"
 @prev Project
@@ -65,6 +68,7 @@ Tools
   +-- crawler/catalog tools
 
 The collection could contain classic Amiga material, older public-domain works, government documents, historical texts, technical references, modern material where licensing permits, and original AmigaGuide content.
+@endnode
 
 @node Library "The AmigaGuide Library"
 @prev Ecosystem
@@ -83,6 +87,7 @@ The physical copy could live locally, on a LAN, or on an Internet server without
 This would allow citations between AmigaGuide documents. For example, a guide discussing United States history could link to an AmigaGuide edition of the Constitution, Declaration of Independence, a Supreme Court opinion, or another primary source when an appropriate guide exists.
 
 The library and crawler must treat licensing and provenance as first-class metadata. Publicly accessible material is not automatically public domain.
+@endnode
 
 @node References "Related Ideas"
 @prev Library
@@ -105,8 +110,10 @@ The project roadmap includes:
 The security model is important because legacy AmigaGuide documents can contain commands capable of invoking external functionality. Untrusted documents should not silently execute arbitrary system or ARexx commands.
 
 This guide is intentionally self-referential: it documents the AmigaGuide on Linux project using AmigaGuide itself.
+@endnode
 
 @node Index "Index"
 @index Main
+@endnode
 
 @endnode
