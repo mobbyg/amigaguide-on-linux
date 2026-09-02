@@ -32,13 +32,13 @@ Destination::Destination(DestinationType type, std::string value, std::string ur
 Destination Destination::node(std::string name)
 {
     while (!name.empty() && name.front() == '/') name.erase(name.begin());
-    if (name.empty()) return {};
+    if (name.empty()) return Destination(DestinationType::Invalid, {}, {});
     return Destination(DestinationType::Node, name, "node:" + name);
 }
 
 Destination Destination::parse(const std::string& input)
 {
-    if (input.empty()) return {};
+    if (input.empty()) return Destination(DestinationType::Invalid, {}, {});
 
     if (has_prefix_ci(input, "node:")) return node(input.substr(5));
     if (has_prefix_ci(input, "file:")) {
@@ -59,7 +59,7 @@ Destination Destination::parse(const std::string& input)
 
     // Unknown schemes are deliberately rejected rather than treated as
     // executable commands or opaque destinations.
-    return {};
+    return Destination(DestinationType::Invalid, {}, {});
 }
 
 } // namespace amigaguide
