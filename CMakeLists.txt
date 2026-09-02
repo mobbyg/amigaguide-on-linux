@@ -14,6 +14,8 @@ option(AMIGAGUIDE_BUILD_APP "Build the Qt 6 viewer" ON)
 
 add_library(amigaguide
     src/amigaguide/document.cpp
+    src/amigaguide/destination.cpp
+    src/amigaguide/destination_resolver.cpp
     src/amigaguide/navigation.cpp
     src/amigaguide/parser.cpp
     src/amigaguide/renderer_model.cpp
@@ -47,9 +49,16 @@ endif()
 
 if(AMIGAGUIDE_BUILD_TESTS)
     enable_testing()
-    add_executable(amigaguide-tests
+
+    add_executable(amigaguide-parser-tests
         tests/test_parser.cpp
     )
-    target_link_libraries(amigaguide-tests PRIVATE amigaguide)
-    add_test(NAME amigaguide-parser COMMAND amigaguide-tests)
+    target_link_libraries(amigaguide-parser-tests PRIVATE amigaguide)
+    add_test(NAME amigaguide-parser COMMAND amigaguide-parser-tests)
+
+    add_executable(amigaguide-destination-tests
+        tests/test_destination.cpp
+    )
+    target_link_libraries(amigaguide-destination-tests PRIVATE amigaguide)
+    add_test(NAME amigaguide-destination COMMAND amigaguide-destination-tests)
 endif()

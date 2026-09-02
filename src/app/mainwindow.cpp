@@ -161,18 +161,30 @@ void MainWindow::openFile()
 
 void MainWindow::openLink(const QUrl& url)
 {
-    if (url.scheme() != QStringLiteral("node")) return;
-    const QString target = url.path().isEmpty() ? url.host() : url.path();
-    navigateToNode(target);
+    const auto destination = amigaguide::Destination::parse(url.toString().toStdString());
+    if (!destination.valid()) return;
+    navigateToDestination(destination);
 }
 
 void MainWindow::navigateToNode(const QString& node, bool add_history)
 {
-    if (node.isEmpty()) return;
-    const QString target = node.startsWith(QLatin1Char('/')) ? node.mid(1) : node;
-    if (!document_.find_node(target.toStdString())) return;
+    navigateToDestination(amigaguide::Destination::node(node.toStdString()), add_history);
+}
 
-    if (add_history) navigation_history_.visit(target.toStdString());
+void MainWindow::navigateToDestination(const amigaguide::Destination& destination, bool add_history)
+{
+    if (!destination.valid()) return;
+
+    if (destination.type() != amigaguide::DestinationType::Node) {
+        // Remote and library destinations are represented by the model now,
+        // but their loaders are intentionally separate future components.
+        return;
+    }
+
+    const QString target = QString::fromStdString(destination.value());
+    if (target.isEmpty() || !document_.find_node(destination.value())) return;
+
+    if (add_history) navigation_history_.visit(destination.uri());
 
     viewer_->scrollToAnchor(target);
     updateNavigationActions();
@@ -181,15 +193,15 @@ void MainWindow::navigateToNode(const QString& node, bool add_history)
 void MainWindow::navigateBack()
 {
     if (!navigation_history_.back()) return;
-    viewer_->scrollToAnchor(QString::fromStdString(navigation_history_.current()));
-    updateNavigationActions();
+    const auto destination = amigaguide::Destination::parse(navigation_history_.current());
+    navigateToDestination(destination, false);
 }
 
 void MainWindow::navigateForward()
 {
     if (!navigation_history_.forward()) return;
-    viewer_->scrollToAnchor(QString::fromStdString(navigation_history_.current()));
-    updateNavigationActions();
+    const auto destination = amigaguide::Destination::parse(navigation_history_.current());
+    navigateToDestination(destination, false);
 }
 
 void MainWindow::navigateHome()
