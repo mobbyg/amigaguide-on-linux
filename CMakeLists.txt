@@ -14,6 +14,8 @@ option(AMIGAGUIDE_BUILD_APP "Build the Qt 6 viewer" ON)
 
 add_library(amigaguide
     src/amigaguide/document.cpp
+    src/amigaguide/destination.cpp
+    src/amigaguide/destination_resolver.cpp
     src/amigaguide/navigation.cpp
     src/amigaguide/parser.cpp
     src/amigaguide/renderer_model.cpp
@@ -49,6 +51,7 @@ if(AMIGAGUIDE_BUILD_TESTS)
     enable_testing()
     add_executable(amigaguide-tests
         tests/test_parser.cpp
+        tests/test_destination.cpp
     )
     target_link_libraries(amigaguide-tests PRIVATE amigaguide)
     add_test(NAME amigaguide-parser COMMAND amigaguide-tests)
