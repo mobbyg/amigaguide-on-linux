@@ -5,6 +5,7 @@
 
 #include <QString>
 
+#include "amigaguide/destination.h"
 #include "amigaguide/document.h"
 #include "amigaguide/navigation.h"
 
@@ -31,6 +32,7 @@ private slots:
 
 private:
     void navigateToNode(const QString& node, bool add_history = true);
+    void navigateToDestination(const amigaguide::Destination& destination, bool add_history = true);
     void updateNavigationActions();
     void updateSearchStatus();
 
