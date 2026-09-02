@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QStatusBar>
 #include <QStyle>
 #include <QTextBrowser>
 #include <QTextCursor>
