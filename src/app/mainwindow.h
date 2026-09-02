@@ -4,9 +4,9 @@
 #include <QUrl>
 
 #include <QString>
-#include <vector>
 
 #include "amigaguide/document.h"
+#include "amigaguide/navigation.h"
 
 class QLabel;
 class QLineEdit;
@@ -42,7 +42,6 @@ private:
     QAction* home_action_ = nullptr;
 
     amigaguide::Document document_;
-    std::vector<QString> navigation_history_;
-    int history_index_ = -1;
+    amigaguide::NavigationHistory navigation_history_;
     QString home_node_;
 };
