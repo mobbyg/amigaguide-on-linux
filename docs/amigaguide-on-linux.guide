@@ -1,0 +1,119 @@
+@database amigaguide-on-linux
+@node Main "AmigaGuide on Linux"
+@title AmigaGuide on Linux
+
+@toc Contents
+@index Index
+
+This document describes the AmigaGuide on Linux project: a modern AmigaGuide reader and the larger ecosystem planned around the format.
+
+@node Contents "Contents"
+@toc Main
+
+@{Reader LINK MainReader}
+@{Project LINK Project}
+@{Ecosystem LINK Ecosystem}
+@{Library LINK Library}
+@{References LINK References}
+@endnode
+
+@node MainReader "The Reader"
+@prev Contents
+@next Project
+
+AmigaGuide on Linux is a modern reader for AmigaGuide documents.
+
+The reader is intended to remain focused on reading AmigaGuide documents while supporting modern platforms. Current work targets Linux and Windows, with future investigation of AROS and AmigaOS support.
+
+The reader should also be able to resolve optional library references without becoming dependent on the library infrastructure.
+@endnode
+
+@node Project "The Project"
+@prev MainReader
+@next Ecosystem
+
+The project is an open-source effort to give AmigaGuide a useful modern life while preserving the character of the original format.
+
+The long-term goal is not simply to reproduce a legacy viewer. It is to make AmigaGuide useful again as a portable, interconnected hypertext and documentation format.
+
+A separate AmigaGuide Editor is planned as a Version 2 goal. The editor should be able to create new guides and edit existing guides while understanding AmigaGuide structure rather than acting only as a generic text editor.
+@endnode
+
+@node Ecosystem "The AmigaGuide Ecosystem"
+@prev Project
+@next Library
+
+The reader, editor, library, crawler, and conversion tools are intended to remain separate projects connected by the AmigaGuide format and a small common reference mechanism.
+
+A possible ecosystem is:
+
+Reader
+  |
+  +-- local AmigaGuide documents
+  +-- ordinary web links
+  +-- library references
+
+Library
+  |
+  +-- curated AmigaGuide documents
+  +-- metadata and provenance
+  +-- stable identifiers
+
+Tools
+  |
+  +-- PDF to AmigaGuide
+  +-- HTML/text to AmigaGuide
+  +-- OCR for scanned documents
+  +-- validation and indexing
+  +-- crawler/catalog tools
+
+The collection could contain classic Amiga material, older public-domain works, government documents, historical texts, technical references, modern material where licensing permits, and original AmigaGuide content.
+@endnode
+
+@node Library "The AmigaGuide Library"
+@prev Ecosystem
+@next References
+
+The proposed AmigaGuide Library is a searchable collection of guides rather than part of the reader itself.
+
+Each document should have stable metadata including title, author, date, source, license or copyright status, provenance, topics, and a stable identifier.
+
+A conceptual library reference is:
+
+  ag://example.document.identifier
+
+The physical copy could live locally, on a LAN, or on an Internet server without changing the identifier.
+
+This would allow citations between AmigaGuide documents. For example, a guide discussing United States history could link to an AmigaGuide edition of the Constitution, Declaration of Independence, a Supreme Court opinion, or another primary source when an appropriate guide exists.
+
+The library and crawler must treat licensing and provenance as first-class metadata. Publicly accessible material is not automatically public domain.
+@endnode
+
+@node References "Related Ideas"
+@prev Library
+@next Contents
+
+The project roadmap includes:
+
+- Reader navigation and history improvements
+- Search and indexing
+- A standalone AmigaGuide Editor
+- A curated AmigaGuide Library
+- Stable GUID-based library references
+- A separate crawler and indexer
+- PDF, HTML, and text conversion tools
+- OCR support for scanned documents
+- Cross-document citations and references
+- AROS and AmigaOS 3.x/4.x integration
+- Safe handling of external AmigaGuide commands
+
+The security model is important because legacy AmigaGuide documents can contain commands capable of invoking external functionality. Untrusted documents should not silently execute arbitrary system or ARexx commands.
+
+This guide is intentionally self-referential: it documents the AmigaGuide on Linux project using AmigaGuide itself.
+@endnode
+
+@node Index "Index"
+@index Main
+@endnode
+
+@endnode
