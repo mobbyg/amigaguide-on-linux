@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <utility>
 
 namespace amigaguide {
 namespace {
@@ -11,7 +12,6 @@ std::string lower_copy(std::string value)
     std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
-    return value;
 }
 
 bool has_prefix_ci(const std::string& value, const char* prefix)
@@ -39,9 +39,7 @@ Destination Destination::parse(const std::string& input)
 {
     if (input.empty()) return {};
 
-    if (has_prefix_ci(input, "node:")) {
-        return node(input.substr(5));
-    }
+    if (has_prefix_ci(input, "node:")) return node(input.substr(5));
     if (has_prefix_ci(input, "file:")) {
         return Destination(DestinationType::File, input, input);
     }
