@@ -1,10 +1,8 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
-      - '*.*.*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -16,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Install Qt
         run: |
@@ -49,6 +49,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - name: Install Qt 6 with MinGW
         uses: jurplel/install-qt-action@v4
@@ -99,10 +101,10 @@ jobs:
           name: amigaguide-reader-windows-x64
           path: release
 
-      - name: Create GitHub Release
+      - name: Upload assets to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          tag_name: ${{ github.event.release.tag_name }}
           files: |
             release/amigaguide-reader-linux-x64.tar.gz
             release/amigaguide-reader-windows-x64.zip
