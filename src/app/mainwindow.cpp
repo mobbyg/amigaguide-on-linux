@@ -9,7 +9,6 @@
 #include <QLineEdit>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QSignalBlocker>
 #include <QStyle>
 #include <QTextBrowser>
 #include <QTextCursor>
@@ -145,7 +144,6 @@ void MainWindow::openFile()
     viewer_->setHtml(html);
     search_box_->clear();
     navigation_history_.clear();
-    history_index_ = -1;
 
     if (!document_.metadata().toc.empty() && document_.find_node(document_.metadata().toc)) {
         home_node_ = QString::fromStdString(document_.metadata().toc);
@@ -174,19 +172,7 @@ void MainWindow::navigateToNode(const QString& node, bool add_history)
     const QString target = node.startsWith(QLatin1Char('/')) ? node.mid(1) : node;
     if (!document_.find_node(target.toStdString())) return;
 
-    if (add_history) {
-        if (history_index_ >= 0 && history_index_ < static_cast<int>(navigation_history_.size()) &&
-            navigation_history_[history_index_] == target) {
-            viewer_->scrollToAnchor(target);
-            return;
-        }
-        if (history_index_ + 1 < static_cast<int>(navigation_history_.size())) {
-            navigation_history_.erase(navigation_history_.begin() + history_index_ + 1,
-                                      navigation_history_.end());
-        }
-        navigation_history_.push_back(target);
-        history_index_ = static_cast<int>(navigation_history_.size()) - 1;
-    }
+    if (add_history) navigation_history_.visit(target.toStdString());
 
     viewer_->scrollToAnchor(target);
     updateNavigationActions();
@@ -194,17 +180,15 @@ void MainWindow::navigateToNode(const QString& node, bool add_history)
 
 void MainWindow::navigateBack()
 {
-    if (history_index_ <= 0) return;
-    --history_index_;
-    viewer_->scrollToAnchor(navigation_history_[history_index_]);
+    if (!navigation_history_.back()) return;
+    viewer_->scrollToAnchor(QString::fromStdString(navigation_history_.current()));
     updateNavigationActions();
 }
 
 void MainWindow::navigateForward()
 {
-    if (history_index_ < 0 || history_index_ + 1 >= static_cast<int>(navigation_history_.size())) return;
-    ++history_index_;
-    viewer_->scrollToAnchor(navigation_history_[history_index_]);
+    if (!navigation_history_.forward()) return;
+    viewer_->scrollToAnchor(QString::fromStdString(navigation_history_.current()));
     updateNavigationActions();
 }
 
@@ -267,9 +251,8 @@ void MainWindow::updateSearchStatus()
 
 void MainWindow::updateNavigationActions()
 {
-    const bool can_back = history_index_ > 0;
-    const bool can_forward = history_index_ >= 0 &&
-                             history_index_ + 1 < static_cast<int>(navigation_history_.size());
+    const bool can_back = navigation_history_.can_back();
+    const bool can_forward = navigation_history_.can_forward();
     if (back_action_) back_action_->setEnabled(can_back);
     if (forward_action_) forward_action_->setEnabled(can_forward);
     if (home_action_) home_action_->setEnabled(!home_node_.isEmpty());

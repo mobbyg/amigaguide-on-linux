@@ -14,6 +14,7 @@ option(AMIGAGUIDE_BUILD_APP "Build the Qt 6 viewer" ON)
 
 add_library(amigaguide
     src/amigaguide/document.cpp
+    src/amigaguide/navigation.cpp
     src/amigaguide/parser.cpp
     src/amigaguide/renderer_model.cpp
     src/amigaguide/search.cpp
