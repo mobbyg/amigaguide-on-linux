@@ -1,9 +1,12 @@
 #pragma once
 
 #include <QMainWindow>
+#include <QUrl>
 
 #include <QString>
 #include <vector>
+
+#include "amigaguide/document.h"
 
 class QLabel;
 class QLineEdit;
@@ -38,6 +41,7 @@ private:
     QAction* forward_action_ = nullptr;
     QAction* home_action_ = nullptr;
 
+    amigaguide::Document document_;
     std::vector<QString> navigation_history_;
     int history_index_ = -1;
     QString home_node_;
