@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev qt6-tools-dev cmake ninja-build
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Package Linux
+        run: |
+          mkdir -p package
+          cp build/amigaguide-reader package/
+          tar -czf amigaguide-reader-linux-x64.tar.gz -C package amigaguide-reader
+
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: amigaguide-reader-linux-x64
+          path: amigaguide-reader-linux-x64.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6 with MinGW
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_mingw'
+          tools: 'tools_mingw1310'
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Deploy Qt runtime
+        run: |
+          mkdir package
+          copy build\amigaguide-reader.exe package\
+          windeployqt --release --no-translations package\amigaguide-reader.exe
+
+      - name: Package Windows
+        run: Compress-Archive -Path package\* -DestinationPath amigaguide-reader-windows-x64.zip
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: amigaguide-reader-windows-x64
+          path: amigaguide-reader-windows-x64.zip
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: amigaguide-reader-linux-x64
+          path: release
+
+      - name: Download Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: amigaguide-reader-windows-x64
+          path: release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release/amigaguide-reader-linux-x64.tar.gz
+            release/amigaguide-reader-windows-x64.zip
