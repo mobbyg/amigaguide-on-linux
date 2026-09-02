@@ -31,6 +31,9 @@ private slots:
     void navigateHome();
 
 private:
+    bool loadDocumentFile(const QString& path, const QString& requested_node, bool add_history);
+    void renderDocument();
+    amigaguide::Destination currentNodeDestination(const QString& node) const;
     void navigateToNode(const QString& node, bool add_history = true);
     void navigateToDestination(const amigaguide::Destination& destination, bool add_history = true);
     void updateNavigationActions();
@@ -45,5 +48,6 @@ private:
 
     amigaguide::Document document_;
     amigaguide::NavigationHistory navigation_history_;
+    QString current_document_path_;
     QString home_node_;
 };
