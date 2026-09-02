@@ -200,7 +200,20 @@ amigaguide::Destination MainWindow::currentNodeDestination(const QString& node) 
 
 void MainWindow::openLink(const QUrl& url)
 {
-    const auto destination = amigaguide::Destination::parse(url.toString().toStdString());
+    const QString raw_link = url.toString();
+    auto destination = amigaguide::Destination::parse(raw_link.toStdString());
+
+    // The current renderer wraps every LINK target in node:.  Unwrap that
+    // compatibility layer when the target itself is a recognized URI so that
+    // explicit file:/http:/https:/ag: links reach the destination resolver.
+    if (raw_link.startsWith(QStringLiteral("node:"), Qt::CaseInsensitive)) {
+        const QString nested_link = raw_link.mid(5);
+        const auto nested = amigaguide::Destination::parse(nested_link.toStdString());
+        if (nested.valid() && nested.type() != amigaguide::DestinationType::Node) {
+            destination = nested;
+        }
+    }
+
     if (!destination.valid()) {
         statusBar()->showMessage(tr("Unsupported navigation target"), 3000);
         return;
