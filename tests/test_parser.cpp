@@ -1,3 +1,4 @@
+#include "amigaguide/navigation.h"
 #include "amigaguide/parser.h"
 #include "amigaguide/renderer.h"
 #include "amigaguide/search.h"
@@ -80,6 +81,26 @@ int main()
                "case-sensitive search should find only the exact match")) return 1;
     if (!check(search.find(document, "missing").empty(), "missing search should return no matches")) return 1;
     if (!check(search.find(document, "").empty(), "empty search should return no matches")) return 1;
+
+    amigaguide::NavigationHistory history;
+    if (!check(history.empty(), "new navigation history should be empty")) return 1;
+    if (!check(!history.back(), "Back should fail on empty history")) return 1;
+    history.visit("main");
+    history.visit("second");
+    history.visit("third");
+    if (!check(history.current() == "third", "current destination should be latest visit")) return 1;
+    if (!check(history.can_back() && !history.can_forward(), "history should initially only go back")) return 1;
+    history.visit("third");
+    if (!check(!history.can_forward(), "revisiting current destination should not add history")) return 1;
+    if (!check(history.back() && history.current() == "second", "Back should move to previous destination")) return 1;
+    if (!check(history.forward() && history.current() == "third", "Forward should restore destination")) return 1;
+    if (!check(history.back() && history.current() == "second", "Back should work again")) return 1;
+    history.visit("new");
+    if (!check(history.current() == "new", "new visit should become current")) return 1;
+    if (!check(!history.can_forward(), "new visit should discard forward history")) return 1;
+    history.clear();
+    if (!check(history.empty() && !history.can_back() && !history.can_forward(),
+               "clear should reset navigation history")) return 1;
 
     amigaguide::Document malformed;
     const std::string malformed_guide =
