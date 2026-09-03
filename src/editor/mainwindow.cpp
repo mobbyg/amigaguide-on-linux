@@ -8,7 +8,6 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -29,13 +28,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     auto* splitter = new QSplitter(this);
     auto* leftPanel = new QWidget(splitter);
     auto* leftLayout = new QVBoxLayout(leftPanel);
-    nodeLabel_ = new QLabel("Node", leftPanel);
+
+    auto* nodesLabel = new QLabel("Nodes", leftPanel);
+    nodes_ = new QListWidget(leftPanel);
+    auto* titleLabel = new QLabel("Title", leftPanel);
     titleEdit_ = new QLineEdit(leftPanel);
     titleEdit_->setPlaceholderText("Node title");
-    nodes_ = new QListWidget(leftPanel);
-    leftLayout->addWidget(nodeLabel_);
-    leftLayout->addWidget(titleEdit_);
+
+    leftLayout->addWidget(nodesLabel);
     leftLayout->addWidget(nodes_, 1);
+    leftLayout->addWidget(titleLabel);
+    leftLayout->addWidget(titleEdit_);
 
     editor_ = new QPlainTextEdit(splitter);
     editor_->setLineWrapMode(QPlainTextEdit::NoWrap);
@@ -206,7 +209,6 @@ void MainWindow::updateNodes()
     if (!amigaguide::Parser{}.parse(source, document, &error)) {
         nodes_->clear();
         titleEdit_->clear();
-        nodeLabel_->setText("Node");
         statusBar()->showMessage(QString("Parse error on line %1: %2").arg(error.line).arg(QString::fromStdString(error.message)));
         return;
     }
@@ -231,7 +233,6 @@ void MainWindow::nodeActivated(int row)
 {
     if (row < 0) {
         titleEdit_->clear();
-        nodeLabel_->setText("Node");
         return;
     }
     const std::string source = editor_->toPlainText().toUtf8().toStdString();
@@ -240,13 +241,15 @@ void MainWindow::nodeActivated(int row)
     if (row >= static_cast<int>(document.nodes().size())) return;
     const auto& node = document.nodes()[static_cast<std::size_t>(row)];
     updating_ = true;
-    nodeLabel_->setText(QString::fromStdString(node.name));
     titleEdit_->setText(QString::fromStdString(node.title));
     updating_ = false;
 
-    const QString prefix = QString::fromUtf8(source.data(), static_cast<qsizetype>(node.source_begin));
+    const QString sourceText = QString::fromUtf8(source.data(), static_cast<qsizetype>(source.size()));
+    const qsizetype start = QString::fromUtf8(source.data(), static_cast<qsizetype>(node.source_begin)).size();
+    const qsizetype end = QString::fromUtf8(source.data(), static_cast<qsizetype>(node.source_end)).size();
     QTextCursor cursor = editor_->textCursor();
-    cursor.setPosition(prefix.size());
+    cursor.setPosition(start);
+    cursor.setPosition(end, QTextCursor::KeepAnchor);
     editor_->setTextCursor(cursor);
     editor_->centerCursor();
 }
