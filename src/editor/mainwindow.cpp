@@ -3,6 +3,7 @@
 #include "amigaguide/document_editor.h"
 #include "amigaguide/parser.h"
 
+#include <algorithm>
 #include <QAction>
 #include <QFile>
 #include <QFileDialog>
@@ -10,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -17,7 +19,7 @@
 #include <QSplitter>
 #include <QStatusBar>
 #include <QTextCursor>
-#include <QLineEdit>
+#include <QVBoxLayout>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -242,7 +244,6 @@ void MainWindow::nodeActivated(int row)
     titleEdit_->setText(QString::fromStdString(node.title));
     updating_ = false;
 
-    // Node offsets are UTF-8 byte offsets; convert to the corresponding Qt UTF-16 position.
     const QString prefix = QString::fromUtf8(source.data(), static_cast<qsizetype>(node.source_begin));
     QTextCursor cursor = editor_->textCursor();
     cursor.setPosition(prefix.size());
