@@ -2,6 +2,7 @@
 
 #include "amigaguide/parser.h"
 
+#include <QAction>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -11,8 +12,7 @@
 #include <QPlainTextEdit>
 #include <QSplitter>
 #include <QStatusBar>
-#include <QTextStream>
-#include <QToolBar>
+#include <QTextCursor>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
 {
@@ -36,10 +36,22 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     fileMenu->addAction("E&xit", this, &QWidget::close, QKeySequence::Quit);
 
     auto* editMenu = menuBar()->addMenu("&Edit");
-    editMenu->addAction(editor_->undoAction());
-    editMenu->addAction(editor_->redoAction());
+    auto* undo = new QAction("&Undo", this);
+    undo->setShortcut(QKeySequence::Undo);
+    connect(undo, &QAction::triggered, editor_, &QPlainTextEdit::undo);
+    connect(editor_, &QPlainTextEdit::undoAvailable, undo, &QAction::setEnabled);
+    undo->setEnabled(false);
+    editMenu->addAction(undo);
+
+    auto* redo = new QAction("&Redo", this);
+    redo->setShortcut(QKeySequence::Redo);
+    connect(redo, &QAction::triggered, editor_, &QPlainTextEdit::redo);
+    connect(editor_, &QPlainTextEdit::redoAvailable, redo, &QAction::setEnabled);
+    redo->setEnabled(false);
+    editMenu->addAction(redo);
+
     editMenu->addSeparator();
-    editMenu->addAction("Cu&t", editor_, &QPlainTextEdit::cut, QKeySequence::Cut);
+    editMenu->addAction("&Cut", editor_, &QPlainTextEdit::cut, QKeySequence::Cut);
     editMenu->addAction("&Copy", editor_, &QPlainTextEdit::copy, QKeySequence::Copy);
     editMenu->addAction("&Paste", editor_, &QPlainTextEdit::paste, QKeySequence::Paste);
 
