@@ -11,6 +11,7 @@ set(CMAKE_AUTORCC ON)
 
 option(AMIGAGUIDE_BUILD_TESTS "Build parser tests" ON)
 option(AMIGAGUIDE_BUILD_APP "Build the Qt 6 viewer" ON)
+option(AMIGAGUIDE_BUILD_EDITOR "Build the Qt 6 editor" ON)
 
 add_library(amigaguide
     src/amigaguide/document.cpp
@@ -29,9 +30,11 @@ target_include_directories(amigaguide
 
 target_compile_features(amigaguide PUBLIC cxx_std_17)
 
-if(AMIGAGUIDE_BUILD_APP)
+if(AMIGAGUIDE_BUILD_APP OR AMIGAGUIDE_BUILD_EDITOR)
     find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+endif()
 
+if(AMIGAGUIDE_BUILD_APP)
     add_executable(amigaguide-reader
         src/app/main.cpp
         src/app/mainwindow.cpp
@@ -39,6 +42,22 @@ if(AMIGAGUIDE_BUILD_APP)
     )
 
     target_link_libraries(amigaguide-reader
+        PRIVATE
+            amigaguide
+            Qt6::Core
+            Qt6::Gui
+            Qt6::Widgets
+    )
+endif()
+
+if(AMIGAGUIDE_BUILD_EDITOR)
+    add_executable(amigaguide-editor
+        src/editor/main.cpp
+        src/editor/mainwindow.cpp
+        src/editor/mainwindow.h
+    )
+
+    target_link_libraries(amigaguide-editor
         PRIVATE
             amigaguide
             Qt6::Core
