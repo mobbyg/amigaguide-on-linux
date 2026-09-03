@@ -164,9 +164,6 @@ void MainWindow::renderDocument()
     html += QStringLiteral("<html><head><style>");
     html += QStringLiteral("body{font-family:sans-serif;margin:18px;}h1{margin-bottom:12px;}a{font-weight:600;}p.meta{color:#666;}");
     html += QStringLiteral("</style></head><body>");
-    html += QStringLiteral("<p class=\"meta\"><b>Database:</b> %1 &nbsp; <b>Nodes:</b> %2</p>")
-                .arg(QString::fromStdString(document_.metadata().name).toHtmlEscaped())
-                .arg(document_.nodes().size());
 
     for (const auto& node : document_.nodes()) {
         html += QString::fromStdString(amigaguide::render_node_html(document_, node));
