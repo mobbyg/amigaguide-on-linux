@@ -1,16 +1,19 @@
 #include "mainwindow.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
+#include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenuBar>
-#include <QMessageBox>
+#include <QSettings>
 #include <QStatusBar>
 #include <QStyle>
+#include <QTabWidget>
 #include <QTextBrowser>
 #include <QTextCursor>
 #include <QTextDocument>
@@ -23,17 +26,39 @@
 #include "amigaguide/renderer.h"
 #include "amigaguide/search.h"
 
+namespace {
+constexpr auto kCrossDocumentLinksKey = "crossDocumentLinks";
+constexpr auto kNewTabValue = "newTab";
+constexpr auto kNewWindowValue = "newWindow";
+}
+
 MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent), viewer_(new QTextBrowser(this))
+    : QMainWindow(parent), tabs_(new QTabWidget(this))
 {
     setWindowTitle(QStringLiteral("AmigaGuide on Linux"));
     resize(900, 650);
-    setCentralWidget(viewer_);
+    setCentralWidget(tabs_);
+    tabs_->setTabsClosable(false);
+    connect(tabs_, &QTabWidget::currentChanged, this, &MainWindow::tabChanged);
 
     auto* file_menu = menuBar()->addMenu(tr("&File"));
     auto* open_action = file_menu->addAction(tr("&Open..."));
     open_action->setShortcut(QKeySequence::Open);
     connect(open_action, &QAction::triggered, this, &MainWindow::openFile);
+
+    new_tab_action_ = file_menu->addAction(tr("New &Tab"));
+    new_tab_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
+    connect(new_tab_action_, &QAction::triggered, this, [this] { createTab(true); });
+
+    new_window_action_ = file_menu->addAction(tr("New &Window"));
+    new_window_action_->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    connect(new_window_action_, &QAction::triggered, this, [this] {
+        auto* window = new MainWindow;
+        window->setAttribute(Qt::WA_DeleteOnClose);
+        window->show();
+    });
+
+    file_menu->addSeparator();
     auto* exit_action = new QAction(tr("E&xit"), this);
     exit_action->setShortcut(QKeySequence::Quit);
     connect(exit_action, &QAction::triggered, this, &QWidget::close);
@@ -57,6 +82,26 @@ MainWindow::MainWindow(QWidget* parent)
     auto* menu_home = navigate_menu->addAction(tr("&Home"));
     menu_home->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Home));
     connect(menu_home, &QAction::triggered, this, &MainWindow::navigateHome);
+
+    auto* settings_menu = menuBar()->addMenu(tr("&Settings"));
+    auto* cross_document_menu = settings_menu->addMenu(tr("Cross-document links"));
+    cross_document_group_ = new QActionGroup(this);
+    cross_document_group_->setExclusive(true);
+
+    auto* tab_action = cross_document_menu->addAction(tr("New tab"));
+    tab_action->setCheckable(true);
+    cross_document_group_->addAction(tab_action);
+    connect(tab_action, &QAction::triggered, this, &MainWindow::setCrossDocumentLinksInTab);
+
+    auto* window_action = cross_document_menu->addAction(tr("New window"));
+    window_action->setCheckable(true);
+    cross_document_group_->addAction(window_action);
+    connect(window_action, &QAction::triggered, this, &MainWindow::setCrossDocumentLinksInWindow);
+
+    const QSettings settings;
+    const QString saved_mode = settings.value(kCrossDocumentLinksKey, kNewTabValue).toString();
+    if (saved_mode == QLatin1String(kNewWindowValue)) window_action->setChecked(true);
+    else tab_action->setChecked(true);
 
     auto* toolbar = addToolBar(tr("Navigation"));
     toolbar->setMovable(false);
@@ -90,11 +135,38 @@ MainWindow::MainWindow(QWidget* parent)
     connect(search_box_, &QLineEdit::textChanged, this, &MainWindow::searchText);
     connect(search_box_, &QLineEdit::returnPressed, this, &MainWindow::searchNext);
 
-    connect(viewer_, &QTextBrowser::anchorClicked, this, &MainWindow::openLink);
-    viewer_->setOpenExternalLinks(false);
-    viewer_->setOpenLinks(false);
-    viewer_->setPlaceholderText(tr("Open an AmigaGuide file to begin."));
+    createTab(true);
     updateNavigationActions();
+}
+
+MainWindow::ViewState* MainWindow::currentView()
+{
+    const int index = tabs_ ? tabs_->currentIndex() : -1;
+    if (index < 0 || index >= static_cast<int>(views_.size())) return nullptr;
+    return &views_[static_cast<std::size_t>(index)];
+}
+
+const MainWindow::ViewState* MainWindow::currentView() const
+{
+    const int index = tabs_ ? tabs_->currentIndex() : -1;
+    if (index < 0 || index >= static_cast<int>(views_.size())) return nullptr;
+    return &views_[static_cast<std::size_t>(index)];
+}
+
+MainWindow::ViewState* MainWindow::createTab(bool switch_to)
+{
+    ViewState view;
+    view.viewer = new QTextBrowser(tabs_);
+    view.viewer->setOpenExternalLinks(false);
+    view.viewer->setOpenLinks(false);
+    view.viewer->setPlaceholderText(tr("Open an AmigaGuide file to begin."));
+    connect(view.viewer, &QTextBrowser::anchorClicked, this, &MainWindow::openLink);
+
+    views_.push_back(std::move(view));
+    const int index = tabs_->addTab(views_.back().viewer, tr("New Tab"));
+    tabs_->setTabToolTip(index, tr("No document loaded"));
+    if (switch_to) tabs_->setCurrentIndex(index);
+    return &views_.back();
 }
 
 void MainWindow::openFile()
@@ -104,10 +176,12 @@ void MainWindow::openFile()
         tr("AmigaGuide files (*.guide *.Guide);;Text files (*.txt);;All files (*)"));
     if (path.isEmpty()) return;
 
-    if (!loadDocumentFile(path, QString(), true)) return;
+    auto* view = currentView();
+    if (!view) view = createTab(true);
+    loadDocumentFile(*view, path, QString(), true);
 }
 
-bool MainWindow::loadDocumentFile(const QString& path, const QString& requested_node, bool add_history)
+bool MainWindow::loadDocumentFile(ViewState& view, const QString& path, const QString& requested_node, bool add_history)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -128,48 +202,50 @@ bool MainWindow::loadDocumentFile(const QString& path, const QString& requested_
         return false;
     }
 
-    document_ = std::move(parsed_document);
-    current_document_path_ = QFileInfo(path).absoluteFilePath();
-    renderDocument();
+    view.document = std::move(parsed_document);
+    view.current_document_path = QFileInfo(path).absoluteFilePath();
+    renderDocument(view);
     search_box_->clear();
 
-    if (!document_.metadata().toc.empty() && document_.find_node(document_.metadata().toc)) {
-        home_node_ = QString::fromStdString(document_.metadata().toc);
-    } else if (!document_.nodes().empty()) {
-        home_node_ = QString::fromStdString(document_.nodes().front().name);
+    if (!view.document.metadata().toc.empty() && view.document.find_node(view.document.metadata().toc)) {
+        view.home_node = QString::fromStdString(view.document.metadata().toc);
+    } else if (!view.document.nodes().empty()) {
+        view.home_node = QString::fromStdString(view.document.nodes().front().name);
     } else {
-        home_node_.clear();
+        view.home_node.clear();
     }
 
     QString target_node = requested_node;
-    if (target_node.isEmpty() || !document_.find_node(target_node.toStdString())) {
-        target_node = home_node_;
+    if (target_node.isEmpty() || !view.document.find_node(target_node.toStdString())) {
+        target_node = view.home_node;
     }
 
     if (!target_node.isEmpty()) {
-        viewer_->scrollToAnchor(target_node);
-        if (add_history) {
-            navigation_history_.visit(currentNodeDestination(target_node).uri());
-        }
+        view.viewer->scrollToAnchor(target_node);
+        if (add_history) view.navigation_history.visit(currentNodeDestination(view, target_node).uri());
     } else if (add_history) {
-        navigation_history_.visit(QUrl::fromLocalFile(current_document_path_).toString(QUrl::FullyEncoded).toStdString());
+        view.navigation_history.visit(QUrl::fromLocalFile(view.current_document_path).toString(QUrl::FullyEncoded).toStdString());
     }
 
+    const int index = static_cast<int>(&view - views_.data());
+    updateTabTitle(index);
     updateSearchStatus();
     updateNavigationActions();
-    setWindowTitle(QStringLiteral("%1 — AmigaGuide on Linux").arg(QFileInfo(path).fileName()));
+    if (index == tabs_->currentIndex()) {
+        setWindowTitle(QStringLiteral("%1 — AmigaGuide on Linux").arg(QFileInfo(path).fileName()));
+    }
     return true;
 }
 
-void MainWindow::renderDocument()
+void MainWindow::renderDocument(ViewState& view)
 {
     QString html;
     html += QStringLiteral("<html><head><style>");
     html += QStringLiteral("body{font-family:sans-serif;margin:18px;}h1{margin-bottom:12px;}a{font-weight:600;}p.meta{color:#666;}");
     html += QStringLiteral("</style></head><body>");
 
-    for (const auto& node : document_.nodes()) {
-        html += QString::fromStdString(amigaguide::render_node_html(document_, node));
+    for (const auto& node : view.document.nodes()) {
+        html += QString::fromStdString(amigaguide::render_node_html(view.document, node));
         html += QStringLiteral("<p>");
         if (!node.prev.empty()) {
             html += QStringLiteral("<a href=\"node:%1\">&lt; Previous</a>")
@@ -184,16 +260,16 @@ void MainWindow::renderDocument()
     }
     html += QStringLiteral("</body></html>");
 
-    viewer_->setHtml(html);
+    view.viewer->setHtml(html);
 }
 
-amigaguide::Destination MainWindow::currentNodeDestination(const QString& node) const
+amigaguide::Destination MainWindow::currentNodeDestination(const ViewState& view, const QString& node) const
 {
-    if (current_document_path_.isEmpty()) {
+    if (view.current_document_path.isEmpty()) {
         return amigaguide::Destination::node(node.toStdString());
     }
 
-    QUrl url = QUrl::fromLocalFile(current_document_path_);
+    QUrl url = QUrl::fromLocalFile(view.current_document_path);
     url.setFragment(node);
     return amigaguide::Destination::parse(url.toString(QUrl::FullyEncoded).toStdString());
 }
@@ -203,15 +279,10 @@ void MainWindow::openLink(const QUrl& url)
     const QString raw_link = url.toString();
     auto destination = amigaguide::Destination::parse(raw_link.toStdString());
 
-    // The current renderer wraps every LINK target in node:.  Unwrap that
-    // compatibility layer when the target itself is a recognized URI so that
-    // explicit file:/http:/https:/ag: links reach the destination resolver.
     if (raw_link.startsWith(QStringLiteral("node:"), Qt::CaseInsensitive)) {
         const QString nested_link = raw_link.mid(5);
         const auto nested = amigaguide::Destination::parse(nested_link.toStdString());
-        if (nested.valid() && nested.type() != amigaguide::DestinationType::Node) {
-            destination = nested;
-        }
+        if (nested.valid() && nested.type() != amigaguide::DestinationType::Node) destination = nested;
     }
 
     if (!destination.valid()) {
@@ -223,12 +294,15 @@ void MainWindow::openLink(const QUrl& url)
 
 void MainWindow::navigateToNode(const QString& node, bool add_history)
 {
-    navigateToDestination(currentNodeDestination(node), add_history);
+    auto* view = currentView();
+    if (!view || node.isEmpty()) return;
+    navigateToDestination(currentNodeDestination(*view, node), add_history);
 }
 
 void MainWindow::navigateToDestination(const amigaguide::Destination& destination, bool add_history)
 {
-    if (!destination.valid()) return;
+    auto* view = currentView();
+    if (!view || !destination.valid()) return;
 
     amigaguide::LocalDestinationResolver resolver;
     const auto resolution = resolver.resolve(destination);
@@ -236,11 +310,9 @@ void MainWindow::navigateToDestination(const amigaguide::Destination& destinatio
     switch (resolution.kind) {
     case amigaguide::ResolutionKind::InternalNode: {
         const QString target = QString::fromStdString(resolution.value);
-        if (target.isEmpty() || !document_.find_node(resolution.value)) return;
-
-        if (add_history) navigation_history_.visit(currentNodeDestination(target).uri());
-
-        viewer_->scrollToAnchor(target);
+        if (target.isEmpty() || !view->document.find_node(resolution.value)) return;
+        if (add_history) view->navigation_history.visit(currentNodeDestination(*view, target).uri());
+        view->viewer->scrollToAnchor(target);
         updateNavigationActions();
         return;
     }
@@ -250,9 +322,8 @@ void MainWindow::navigateToDestination(const amigaguide::Destination& destinatio
             statusBar()->showMessage(tr("Invalid local file target"), 3000);
             return;
         }
-
-        if (target_url.isRelative() && !current_document_path_.isEmpty()) {
-            target_url = QUrl::fromLocalFile(current_document_path_).resolved(target_url);
+        if (target_url.isRelative() && !view->current_document_path.isEmpty()) {
+            target_url = QUrl::fromLocalFile(view->current_document_path).resolved(target_url);
         }
 
         const QString path = target_url.toLocalFile();
@@ -260,18 +331,33 @@ void MainWindow::navigateToDestination(const amigaguide::Destination& destinatio
             statusBar()->showMessage(tr("Invalid local file target"), 3000);
             return;
         }
-
         const QString node = target_url.fragment(QUrl::FullyDecoded);
-        if (!loadDocumentFile(path, node, false)) return;
+        const QString current_path = QFileInfo(view->current_document_path).absoluteFilePath();
+        const QString target_path = QFileInfo(path).absoluteFilePath();
+        const Qt::CaseSensitivity sensitivity =
+#ifdef Q_OS_WIN
+            Qt::CaseInsensitive;
+#else
+            Qt::CaseSensitive;
+#endif
+        const bool different_document = current_path.isEmpty() || current_path.compare(target_path, sensitivity) != 0;
 
-        if (add_history) {
-            QString history_uri = QUrl::fromLocalFile(current_document_path_).toString(QUrl::FullyEncoded);
-            if (!node.isEmpty() && document_.find_node(node.toStdString())) {
-                history_uri += QStringLiteral("#") + QString::fromUtf8(QUrl::toPercentEncoding(node));
+        if (add_history && different_document) {
+            if (crossDocumentMode() == CrossDocumentMode::NewWindow) {
+                auto* window = new MainWindow;
+                window->setAttribute(Qt::WA_DeleteOnClose);
+                window->show();
+                if (auto* new_view = window->currentView()) {
+                    window->loadDocumentFile(*new_view, path, node, true);
+                }
+            } else {
+                auto* new_view = createTab(true);
+                loadDocumentFile(*new_view, path, node, true);
             }
-            navigation_history_.visit(history_uri.toStdString());
+            return;
         }
-        updateNavigationActions();
+
+        loadDocumentFile(*view, path, node, add_history);
         return;
     }
     case amigaguide::ResolutionKind::RemoteHttp:
@@ -288,70 +374,74 @@ void MainWindow::navigateToDestination(const amigaguide::Destination& destinatio
 
 void MainWindow::navigateBack()
 {
-    if (!navigation_history_.back()) return;
-    const auto destination = amigaguide::Destination::parse(navigation_history_.current());
-    navigateToDestination(destination, false);
+    auto* view = currentView();
+    if (!view || !view->navigation_history.back()) return;
+    navigateToDestination(amigaguide::Destination::parse(view->navigation_history.current()), false);
 }
 
 void MainWindow::navigateForward()
 {
-    if (!navigation_history_.forward()) return;
-    const auto destination = amigaguide::Destination::parse(navigation_history_.current());
-    navigateToDestination(destination, false);
+    auto* view = currentView();
+    if (!view || !view->navigation_history.forward()) return;
+    navigateToDestination(amigaguide::Destination::parse(view->navigation_history.current()), false);
 }
 
 void MainWindow::navigateHome()
 {
-    navigateToNode(home_node_);
+    auto* view = currentView();
+    if (view) navigateToNode(view->home_node);
 }
 
 void MainWindow::searchText()
 {
+    auto* view = currentView();
+    if (!view) return;
     if (search_box_->text().isEmpty()) {
-        viewer_->moveCursor(QTextCursor::Start);
+        view->viewer->moveCursor(QTextCursor::Start);
         updateSearchStatus();
         return;
     }
-
-    viewer_->moveCursor(QTextCursor::Start);
-    viewer_->find(search_box_->text());
+    view->viewer->moveCursor(QTextCursor::Start);
+    view->viewer->find(search_box_->text());
     updateSearchStatus();
 }
 
 void MainWindow::searchNext()
 {
-    if (search_box_->text().isEmpty()) return;
-    if (!viewer_->find(search_box_->text())) {
-        viewer_->moveCursor(QTextCursor::Start);
-        viewer_->find(search_box_->text());
+    auto* view = currentView();
+    if (!view || search_box_->text().isEmpty()) return;
+    if (!view->viewer->find(search_box_->text())) {
+        view->viewer->moveCursor(QTextCursor::Start);
+        view->viewer->find(search_box_->text());
     }
     updateSearchStatus();
 }
 
 void MainWindow::searchPrevious()
 {
-    if (search_box_->text().isEmpty()) return;
-    if (!viewer_->find(search_box_->text(), QTextDocument::FindBackward)) {
-        viewer_->moveCursor(QTextCursor::End);
-        viewer_->find(search_box_->text(), QTextDocument::FindBackward);
+    auto* view = currentView();
+    if (!view || search_box_->text().isEmpty()) return;
+    if (!view->viewer->find(search_box_->text(), QTextDocument::FindBackward)) {
+        view->viewer->moveCursor(QTextCursor::End);
+        view->viewer->find(search_box_->text(), QTextDocument::FindBackward);
     }
     updateSearchStatus();
 }
 
 void MainWindow::updateSearchStatus()
 {
-    if (search_box_->text().isEmpty()) {
+    const auto* view = currentView();
+    if (!view || search_box_->text().isEmpty()) {
         search_status_->clear();
         return;
     }
 
     amigaguide::SearchEngine engine;
-    const auto matches = engine.find(document_, search_box_->text().toStdString());
+    const auto matches = engine.find(view->document, search_box_->text().toStdString());
     if (matches.empty()) {
         search_status_->setText(tr("No matches"));
         return;
     }
-
     search_status_->setText(tr("%1 match%2")
                                 .arg(matches.size())
                                 .arg(matches.size() == 1 ? QString() : QStringLiteral("es")));
@@ -359,9 +449,59 @@ void MainWindow::updateSearchStatus()
 
 void MainWindow::updateNavigationActions()
 {
-    const bool can_back = navigation_history_.can_back();
-    const bool can_forward = navigation_history_.can_forward();
+    const auto* view = currentView();
+    const bool can_back = view && view->navigation_history.can_back();
+    const bool can_forward = view && view->navigation_history.can_forward();
     if (back_action_) back_action_->setEnabled(can_back);
     if (forward_action_) forward_action_->setEnabled(can_forward);
-    if (home_action_) home_action_->setEnabled(!home_node_.isEmpty());
+    if (home_action_) home_action_->setEnabled(view && !view->home_node.isEmpty());
+}
+
+void MainWindow::updateTabTitle(int index)
+{
+    if (index < 0 || index >= static_cast<int>(views_.size())) return;
+    const auto& view = views_[static_cast<std::size_t>(index)];
+    const QString title = view.current_document_path.isEmpty()
+        ? tr("New Tab")
+        : QFileInfo(view.current_document_path).fileName();
+    tabs_->setTabText(index, title);
+    tabs_->setTabToolTip(index, view.current_document_path.isEmpty()
+                                      ? tr("No document loaded")
+                                      : view.current_document_path);
+}
+
+void MainWindow::tabChanged(int index)
+{
+    if (index < 0 || index >= static_cast<int>(views_.size())) return;
+    search_box_->clear();
+    updateSearchStatus();
+    updateNavigationActions();
+    const auto& view = views_[static_cast<std::size_t>(index)];
+    setWindowTitle(view.current_document_path.isEmpty()
+                       ? QStringLiteral("AmigaGuide on Linux")
+                       : QStringLiteral("%1 — AmigaGuide on Linux").arg(QFileInfo(view.current_document_path).fileName()));
+}
+
+void MainWindow::setCrossDocumentLinksInTab()
+{
+    setCrossDocumentMode(CrossDocumentMode::NewTab);
+}
+
+void MainWindow::setCrossDocumentLinksInWindow()
+{
+    setCrossDocumentMode(CrossDocumentMode::NewWindow);
+}
+
+void MainWindow::setCrossDocumentMode(CrossDocumentMode mode)
+{
+    QSettings settings;
+    settings.setValue(kCrossDocumentLinksKey,
+                      mode == CrossDocumentMode::NewTab ? kNewTabValue : kNewWindowValue);
+}
+
+MainWindow::CrossDocumentMode MainWindow::crossDocumentMode() const
+{
+    const auto* action = cross_document_group_->checkedAction();
+    if (action && action->text() == tr("New window")) return CrossDocumentMode::NewWindow;
+    return CrossDocumentMode::NewTab;
 }
