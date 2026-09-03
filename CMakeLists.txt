@@ -15,6 +15,7 @@ option(AMIGAGUIDE_BUILD_EDITOR "Build the Qt 6 editor" ON)
 
 add_library(amigaguide
     src/amigaguide/document.cpp
+    src/amigaguide/document_editor.cpp
     src/amigaguide/destination.cpp
     src/amigaguide/destination_resolver.cpp
     src/amigaguide/navigation.cpp
@@ -86,4 +87,10 @@ if(AMIGAGUIDE_BUILD_TESTS)
     )
     target_link_libraries(amigaguide-renderer-tests PRIVATE amigaguide)
     add_test(NAME amigaguide-renderer COMMAND amigaguide-renderer-tests)
+
+    add_executable(amigaguide-document-editor-tests
+        tests/test_document_editor.cpp
+    )
+    target_link_libraries(amigaguide-document-editor-tests PRIVATE amigaguide)
+    add_test(NAME amigaguide-document-editor COMMAND amigaguide-document-editor-tests)
 endif()

@@ -54,6 +54,7 @@ public:
 
     void set_source(std::string source) { source_ = std::move(source); }
     const std::string& source() const noexcept { return source_; }
+    std::string& source() noexcept { return source_; }
     DocumentMetadata& metadata() noexcept { return metadata_; }
     std::vector<Node>& nodes() noexcept { return nodes_; }
 
