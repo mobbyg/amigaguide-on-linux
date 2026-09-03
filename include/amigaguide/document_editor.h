@@ -8,6 +8,23 @@
 
 namespace amigaguide {
 
+enum class NodeProperty {
+    Keywords,
+    Prev,
+    Next,
+    Help,
+    Toc,
+    Index,
+    Font,
+    TabWidth
+};
+
+enum class NodeFlag {
+    WordWrap,
+    SmartWrap,
+    Proportional
+};
+
 class DocumentEditor {
 public:
     explicit DocumentEditor(Document& document) : document_(document) {}
@@ -15,6 +32,8 @@ public:
     bool add_node(std::string name, std::string title, std::string* error = nullptr);
     bool rename_node(std::size_t index, std::string name, std::string* error = nullptr);
     bool set_node_title(std::size_t index, std::string title, std::string* error = nullptr);
+    bool set_node_property(std::size_t index, NodeProperty property, std::string value, std::string* error = nullptr);
+    bool set_node_flag(std::size_t index, NodeFlag flag, bool enabled, std::string* error = nullptr);
     bool remove_node(std::size_t index, std::string* error = nullptr);
 
 private:
