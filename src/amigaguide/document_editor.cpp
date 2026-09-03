@@ -1,5 +1,6 @@
 #include "amigaguide/document_editor.h"
 
+#include <algorithm>
 #include <cctype>
 
 namespace amigaguide {
@@ -32,10 +33,10 @@ bool next_token(std::string_view value, std::size_t& cursor, Token& token)
     return true;
 }
 
-std::string quote_title(std::string_view title)
+std::string quote(std::string_view value)
 {
     std::string result = "\"";
-    for (const char c : title) {
+    for (const char c : value) {
         if (c == '"') result += "\\\"";
         else result += c;
     }
@@ -43,12 +44,13 @@ std::string quote_title(std::string_view title)
     return result;
 }
 
-std::string token_value(std::string_view value, const Token& token)
+bool is_title_command(std::string_view line, Token& argument)
 {
-    if (!token.quoted) return std::string(value.substr(token.begin, token.end - token.begin));
-    if (token.end - token.begin >= 2)
-        return std::string(value.substr(token.begin + 1, token.end - token.begin - 2));
-    return {};
+    std::size_t cursor = 0;
+    Token command;
+    if (!next_token(line, cursor, command)) return false;
+    if (line.substr(command.begin, command.end - command.begin) != "@title") return false;
+    return next_token(line, cursor, argument);
 }
 
 } // namespace
@@ -81,7 +83,7 @@ bool DocumentEditor::add_node(std::string name, std::string title, std::string* 
 
     std::string block;
     if (!document_.source().empty() && document_.source().back() != '\n') block += '\n';
-    block += "@node " + name + " " + quote_title(title) + "\n\n@endnode\n";
+    block += "@node " + name + " " + quote(title) + "\n\n@endnode\n";
     document_.source().append(block);
     return true;
 }
@@ -114,7 +116,7 @@ bool DocumentEditor::rename_node(std::size_t index, std::string name, std::strin
         return false;
     }
 
-    const std::string replacement = name_token.quoted ? quote_title(name) : name;
+    const std::string replacement = name_token.quoted ? quote(name) : name;
     return replace_source(node.source_begin + name_token.begin,
                           node.source_begin + name_token.end,
                           replacement,
@@ -129,31 +131,43 @@ bool DocumentEditor::set_node_title(std::size_t index, std::string title, std::s
     }
 
     const auto& node = document_.nodes()[index];
-    const auto line_end = document_.source().find('\n', node.source_begin);
-    const auto header_end = line_end == std::string::npos ? document_.source().size() : line_end;
-    const std::string_view line(document_.source().data() + node.source_begin, header_end - node.source_begin);
+    const std::size_t block_end = node.source_end;
+    std::size_t line_begin = node.source_begin;
+    while (line_begin < block_end) {
+        const auto line_end = document_.source().find('\n', line_begin);
+        const auto end = line_end == std::string::npos ? block_end : std::min(line_end, block_end);
+        const std::string_view line(document_.source().data() + line_begin, end - line_begin);
+        Token argument;
+        if (is_title_command(line, argument)) {
+            return replace_source(line_begin + argument.begin,
+                                  line_begin + argument.end,
+                                  quote(title),
+                                  error);
+        }
+        if (line_end == std::string::npos || line_end >= block_end) break;
+        line_begin = line_end + 1;
+    }
+
+    const auto header_end = document_.source().find('\n', node.source_begin);
+    const auto end = header_end == std::string::npos ? document_.source().size() : header_end;
+    const std::string_view line(document_.source().data() + node.source_begin, end - node.source_begin);
     std::size_t cursor = 0;
     Token command;
     Token name_token;
-    Token title_token;
     if (!next_token(line, cursor, command) || !next_token(line, cursor, name_token)) {
         set_error(error, "could not locate node declaration");
         return false;
     }
 
-    const std::string replacement = quote_title(title);
+    Token title_token;
     if (next_token(line, cursor, title_token)) {
         return replace_source(node.source_begin + title_token.begin,
                               node.source_begin + title_token.end,
-                              replacement,
+                              quote(title),
                               error);
     }
 
-    const std::string insertion = " " + replacement;
-    return replace_source(node.source_begin + header_end - node.source_begin,
-                          node.source_begin + header_end - node.source_begin,
-                          insertion,
-                          error);
+    return replace_source(end, end, std::string(" ") + quote(title), error);
 }
 
 bool DocumentEditor::remove_node(std::size_t index, std::string* error)
