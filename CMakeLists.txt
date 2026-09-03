@@ -22,6 +22,7 @@ add_library(amigaguide
     src/amigaguide/parser.cpp
     src/amigaguide/renderer_model.cpp
     src/amigaguide/search.cpp
+    src/amigaguide/validator.cpp
 )
 
 target_include_directories(amigaguide
@@ -93,4 +94,10 @@ if(AMIGAGUIDE_BUILD_TESTS)
     )
     target_link_libraries(amigaguide-document-editor-tests PRIVATE amigaguide)
     add_test(NAME amigaguide-document-editor COMMAND amigaguide-document-editor-tests)
+
+    add_executable(amigaguide-validator-tests
+        tests/test_validator.cpp
+    )
+    target_link_libraries(amigaguide-validator-tests PRIVATE amigaguide)
+    add_test(NAME amigaguide-validator COMMAND amigaguide-validator-tests)
 endif()
