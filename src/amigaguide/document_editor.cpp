@@ -29,7 +29,7 @@ bool DocumentEditor::set_document_property(DocumentProperty property,std::string
         Token argument;
         if(command_matches(line,command,&argument)){
             if(value.empty()){const auto remove_end=line_end==std::string::npos?end:line_end+1;return replace_source(line_begin,remove_end,{},error);}
-            std::string replacement=(property==DocumentProperty::Keywords||property==DocumentProperty::WordDelimiter||property==DocumentProperty::Width||property==DocumentProperty::Height||property==DocumentProperty::TabWidth)?value:quote(value);
+            std::string replacement=(property==DocumentProperty::WordDelimiter||property==DocumentProperty::Width||property==DocumentProperty::Height||property==DocumentProperty::TabWidth)?value:quote(value);
             return replace_source(line_begin+argument.begin,line_begin+argument.end,replacement,error);
         }
         if(line_end==std::string::npos||line_end>=first_node)break;line_begin=line_end+1;
