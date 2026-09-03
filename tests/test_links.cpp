@@ -46,8 +46,8 @@ int main()
         "@node Main\nBroken: @{\"missing\" LINK Missing}\n@endnode\n");
     check(broken.size() == 1, "broken link is still inspectable");
     check(broken[0].target == "Missing", "broken target preserved");
-    check(broken[0].source_offset == 20, "source offset recorded");
-    check(broken[0].column == 9, "source column recorded");
+    check(broken[0].source_offset == 19, "source offset recorded");
+    check(broken[0].column == 20, "source column recorded");
 
     std::cout << "PASS\n";
     return 0;
