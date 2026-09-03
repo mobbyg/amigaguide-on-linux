@@ -1,5 +1,6 @@
 #include "amigaguide/links.h"
 
+#include <cstdlib>
 #include <iostream>
 #include <string>
 
@@ -17,9 +18,9 @@ int main()
 {
     const std::string source =
         "@node Main\n"
-        "Read @\{\"the preamble\" LINK Preamble\}.\n"
-        "Legacy: @\{Preamble|\"old link\" LINK Preamble\}.\n"
-        "External: @\{\"website\" LINK \"https://example.com\"\}.\n"
+        "Read @{\"the preamble\" LINK Preamble}.\n"
+        "Legacy: @{Preamble|\"old link\" LINK Preamble}.\n"
+        "External: @{\"website\" LINK \"https://example.com\"}.\n"
         "@endnode\n"
         "@node Preamble\n"
         "@endnode\n";
@@ -45,7 +46,8 @@ int main()
         "@node Main\nBroken: @{\"missing\" LINK Missing}\n@endnode\n");
     check(broken.size() == 1, "broken link is still inspectable");
     check(broken[0].target == "Missing", "broken target preserved");
-    check(broken[0].source_offset < std::string::npos, "source offset recorded");
+    check(broken[0].source_offset == 20, "source offset recorded");
+    check(broken[0].column == 9, "source column recorded");
 
     std::cout << "PASS\n";
     return 0;
