@@ -34,7 +34,10 @@ MainWindow::MainWindow(QWidget* parent)
     auto* open_action = file_menu->addAction(tr("&Open..."));
     open_action->setShortcut(QKeySequence::Open);
     connect(open_action, &QAction::triggered, this, &MainWindow::openFile);
-    file_menu->addAction(tr("E&xit"), this, &QWidget::close, QKeySequence::Quit);
+    auto* exit_action = new QAction(tr("E&xit"), this);
+    exit_action->setShortcut(QKeySequence::Quit);
+    connect(exit_action, &QAction::triggered, this, &QWidget::close);
+    file_menu->addAction(exit_action);
 
     auto* edit_menu = menuBar()->addMenu(tr("&Edit"));
     auto* find_action = edit_menu->addAction(tr("&Find..."));
