@@ -28,12 +28,31 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     setCentralWidget(splitter);
 
     auto* fileMenu = menuBar()->addMenu("&File");
-    fileMenu->addAction("&New", this, &MainWindow::newFile, QKeySequence::New);
-    fileMenu->addAction("&Open...", this, &MainWindow::open, QKeySequence::Open);
-    fileMenu->addAction("&Save", this, &MainWindow::save, QKeySequence::Save);
-    fileMenu->addAction("Save &As...", this, &MainWindow::saveAs, QKeySequence::SaveAs);
+    auto* newAction = new QAction("&New", this);
+    newAction->setShortcut(QKeySequence::New);
+    connect(newAction, &QAction::triggered, this, &MainWindow::newFile);
+    fileMenu->addAction(newAction);
+
+    auto* openAction = new QAction("&Open...", this);
+    openAction->setShortcut(QKeySequence::Open);
+    connect(openAction, &QAction::triggered, this, &MainWindow::open);
+    fileMenu->addAction(openAction);
+
+    auto* saveAction = new QAction("&Save", this);
+    saveAction->setShortcut(QKeySequence::Save);
+    connect(saveAction, &QAction::triggered, this, &MainWindow::save);
+    fileMenu->addAction(saveAction);
+
+    auto* saveAsAction = new QAction("Save &As...", this);
+    saveAsAction->setShortcut(QKeySequence::SaveAs);
+    connect(saveAsAction, &QAction::triggered, this, &MainWindow::saveAs);
+    fileMenu->addAction(saveAsAction);
+
     fileMenu->addSeparator();
-    fileMenu->addAction("E&xit", this, &QWidget::close, QKeySequence::Quit);
+    auto* exitAction = new QAction("E&xit", this);
+    exitAction->setShortcut(QKeySequence::Quit);
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+    fileMenu->addAction(exitAction);
 
     auto* editMenu = menuBar()->addMenu("&Edit");
     auto* undo = new QAction("&Undo", this);
