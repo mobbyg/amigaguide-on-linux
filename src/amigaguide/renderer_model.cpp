@@ -76,6 +76,45 @@ bool quoted(std::string_view s, std::string& value, std::size_t& end)
     return false;
 }
 
+// AmigaGuide documents in the wild use two LINK spellings.  The canonical
+// form starts with a quoted label, while older guides commonly use a pipe
+// between the link target/name and the quoted label:
+//   @{"Label" LINK "Target"}
+//   @{Target|"Label" LINK Target}
+// In both cases the explicit LINK operand is the destination when present.
+bool render_legacy_link(std::string_view raw, std::string& content)
+{
+    const auto pipe = raw.find('|');
+    if (pipe == std::string_view::npos) return false;
+
+    const auto left = trim(raw.substr(0, pipe));
+    if (left.empty()) return false;
+
+    auto rest = trim(raw.substr(pipe + 1));
+    std::string label;
+    std::size_t used = 0;
+    if (!quoted(rest, label, used)) return false;
+
+    rest = trim(rest.substr(used));
+    if (lower(first_token(rest)) != "link") return false;
+
+    rest = trim(rest.substr(4));
+    std::string target;
+    std::size_t used_target = 0;
+    if (quoted(rest, target, used_target)) {
+        // Quoted targets are supported just like the canonical form.
+    } else {
+        target = first_token(rest);
+    }
+
+    if (target.empty()) target = left;
+    if (target.empty()) return false;
+
+    content += "<a href=\"node:" + html_escape(target) + "\">" +
+               html_escape(label) + "</a>";
+    return true;
+}
+
 std::string css_color(std::string_view value)
 {
     const auto color = lower(trim(value));
@@ -263,6 +302,8 @@ std::string render_line(std::string_view line)
             } else {
                 pending += "@{" + raw + "}";
             }
+        } else if (render_legacy_link(raw, content)) {
+            // Supported legacy pipe-delimited LINK form.
         } else {
             // Unknown attributes are kept visible rather than silently lost.
             pending += "@{" + raw + "}";
