@@ -70,9 +70,20 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent)
     editMenu->addAction(redo);
 
     editMenu->addSeparator();
-    editMenu->addAction("&Cut", editor_, &QPlainTextEdit::cut, QKeySequence::Cut);
-    editMenu->addAction("&Copy", editor_, &QPlainTextEdit::copy, QKeySequence::Copy);
-    editMenu->addAction("&Paste", editor_, &QPlainTextEdit::paste, QKeySequence::Paste);
+    auto* cutAction = new QAction("&Cut", this);
+    cutAction->setShortcut(QKeySequence::Cut);
+    connect(cutAction, &QAction::triggered, editor_, &QPlainTextEdit::cut);
+    editMenu->addAction(cutAction);
+
+    auto* copyAction = new QAction("&Copy", this);
+    copyAction->setShortcut(QKeySequence::Copy);
+    connect(copyAction, &QAction::triggered, editor_, &QPlainTextEdit::copy);
+    editMenu->addAction(copyAction);
+
+    auto* pasteAction = new QAction("&Paste", this);
+    pasteAction->setShortcut(QKeySequence::Paste);
+    connect(pasteAction, &QAction::triggered, editor_, &QPlainTextEdit::paste);
+    editMenu->addAction(pasteAction);
 
     connect(editor_, &QPlainTextEdit::textChanged, this, &MainWindow::updateNodes);
     connect(nodes_, &QListWidget::currentRowChanged, this, &MainWindow::nodeActivated);
