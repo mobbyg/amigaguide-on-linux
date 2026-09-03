@@ -14,6 +14,7 @@ const char* property_command(NodeProperty property){switch(property){case NodePr
 const char* flag_command(NodeFlag flag){switch(flag){case NodeFlag::WordWrap:return "@wordwrap";case NodeFlag::SmartWrap:return "@smartwrap";case NodeFlag::Proportional:return "@proportional";}return "";}
 const char* document_property_command(DocumentProperty property){switch(property){case DocumentProperty::Name:return "@database";case DocumentProperty::Author:return "@author";case DocumentProperty::Version:return "@version";case DocumentProperty::Copyright:return "@copyright";case DocumentProperty::Font:return "@font";case DocumentProperty::Help:return "@help";case DocumentProperty::Toc:return "@toc";case DocumentProperty::Index:return "@index";case DocumentProperty::WordDelimiter:return "@worddelimiter";case DocumentProperty::Width:return "@width";case DocumentProperty::Height:return "@height";case DocumentProperty::TabWidth:return "@tab";}return "";}
 bool document_property_needs_quotes(DocumentProperty property){switch(property){case DocumentProperty::Name:case DocumentProperty::Help:case DocumentProperty::Toc:case DocumentProperty::Index:return true;default:return false;}}
+bool document_property_is_raw(DocumentProperty property){switch(property){case DocumentProperty::Author:case DocumentProperty::Version:case DocumentProperty::Copyright:case DocumentProperty::Font:return true;default:return false;}}
 bool command_matches(std::string_view line,std::string_view wanted,Token* argument=nullptr){std::size_t cursor=0;Token command;if(!next_token(line,cursor,command))return false;if(lower(line.substr(command.begin,command.end-command.begin))!=lower(wanted))return false;if(argument)return next_token(line,cursor,*argument);return true;}
 }
 void DocumentEditor::set_error(std::string* error,std::string message){if(error)*error=std::move(message);}
@@ -31,6 +32,7 @@ bool DocumentEditor::set_document_property(DocumentProperty property,std::string
         if(command_matches(line,command,&argument)){
             if(value.empty()){const auto remove_end=line_end==std::string::npos?end:line_end+1;return replace_source(line_begin,remove_end,{},error);}
             const std::string replacement=document_property_needs_quotes(property)?quote(value):value;
+            if(document_property_is_raw(property))return replace_source(line_begin+argument.begin,end,replacement,error);
             return replace_source(line_begin+argument.begin,line_begin+argument.end,replacement,error);
         }
         if(line_end==std::string::npos||line_end>=first_node)break;line_begin=line_end+1;
