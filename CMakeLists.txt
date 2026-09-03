@@ -80,4 +80,10 @@ if(AMIGAGUIDE_BUILD_TESTS)
     )
     target_link_libraries(amigaguide-destination-tests PRIVATE amigaguide)
     add_test(NAME amigaguide-destination COMMAND amigaguide-destination-tests)
+
+    add_executable(amigaguide-renderer-tests
+        tests/test_renderer.cpp
+    )
+    target_link_libraries(amigaguide-renderer-tests PRIVATE amigaguide)
+    add_test(NAME amigaguide-renderer COMMAND amigaguide-renderer-tests)
 endif()
