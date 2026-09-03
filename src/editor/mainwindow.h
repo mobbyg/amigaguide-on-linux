@@ -2,15 +2,16 @@
 
 #include <QMainWindow>
 
-class QListWidget;
+class QCheckBox;
 class QLineEdit;
+class QListWidget;
 class QPlainTextEdit;
+class QSpinBox;
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
 public:
     explicit MainWindow(QWidget* parent = nullptr);
-
     void openFile(const QString& path);
 
 private slots:
@@ -24,6 +25,8 @@ private slots:
     void renameNode();
     void deleteNode();
     void titleEdited();
+    void propertyEdited();
+    void flagEdited(bool enabled);
 
 private:
     bool maybeSave();
@@ -32,10 +35,23 @@ private:
     void loadSource(const QString& source);
     bool applyNodeEdit(const QString& operation, int row);
     void setNodeSelection(int row);
+    void refreshProperties(int row);
+    void replaceSource(const std::string& source, int row, const QString& message);
 
     QPlainTextEdit* editor_ = nullptr;
     QListWidget* nodes_ = nullptr;
     QLineEdit* titleEdit_ = nullptr;
+    QLineEdit* keywordsEdit_ = nullptr;
+    QLineEdit* prevEdit_ = nullptr;
+    QLineEdit* nextEdit_ = nullptr;
+    QLineEdit* helpEdit_ = nullptr;
+    QLineEdit* tocEdit_ = nullptr;
+    QLineEdit* indexEdit_ = nullptr;
+    QLineEdit* fontEdit_ = nullptr;
+    QSpinBox* tabWidthEdit_ = nullptr;
+    QCheckBox* wordWrapEdit_ = nullptr;
+    QCheckBox* smartWrapEdit_ = nullptr;
+    QCheckBox* proportionalEdit_ = nullptr;
     QString filePath_;
     bool updating_ = false;
 };
