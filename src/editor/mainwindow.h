@@ -2,7 +2,6 @@
 
 #include <QMainWindow>
 
-class QLabel;
 class QListWidget;
 class QLineEdit;
 class QPlainTextEdit;
@@ -37,7 +36,6 @@ private:
     QPlainTextEdit* editor_ = nullptr;
     QListWidget* nodes_ = nullptr;
     QLineEdit* titleEdit_ = nullptr;
-    QLabel* nodeLabel_ = nullptr;
     QString filePath_;
     bool updating_ = false;
 };
