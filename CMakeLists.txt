@@ -18,6 +18,7 @@ add_library(amigaguide
     src/amigaguide/document_editor.cpp
     src/amigaguide/destination.cpp
     src/amigaguide/destination_resolver.cpp
+    src/amigaguide/links.cpp
     src/amigaguide/navigation.cpp
     src/amigaguide/parser.cpp
     src/amigaguide/renderer_model.cpp
@@ -100,4 +101,10 @@ if(AMIGAGUIDE_BUILD_TESTS)
     )
     target_link_libraries(amigaguide-validator-tests PRIVATE amigaguide)
     add_test(NAME amigaguide-validator COMMAND amigaguide-validator-tests)
+
+    add_executable(amigaguide-links-tests
+        tests/test_links.cpp
+    )
+    target_link_libraries(amigaguide-links-tests PRIVATE amigaguide)
+    add_test(NAME amigaguide-links COMMAND amigaguide-links-tests)
 endif()
