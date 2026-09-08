@@ -1,8 +1,10 @@
 #pragma once
 
+#include <QListWidget>
+#include <QStatusBar>
+
 class QCheckBox;
 class QLineEdit;
-class QListWidget;
 class QPlainTextEdit;
 class QSpinBox;
 class MainWindow;
