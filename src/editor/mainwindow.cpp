@@ -19,6 +19,11 @@
 #include <QTextCursor>
 #include <QVBoxLayout>
 
+namespace {
+amigaguide::NodeProperty propertyFor(QObject* o){const auto n=o->objectName();if(n=="keywords")return amigaguide::NodeProperty::Keywords;if(n=="prev")return amigaguide::NodeProperty::Prev;if(n=="next")return amigaguide::NodeProperty::Next;if(n=="help")return amigaguide::NodeProperty::Help;if(n=="toc")return amigaguide::NodeProperty::Toc;if(n=="index")return amigaguide::NodeProperty::Index;if(n=="font")return amigaguide::NodeProperty::Font;return amigaguide::NodeProperty::TabWidth;}
+amigaguide::NodeFlag flagFor(QObject* o){const auto n=o->objectName();if(n=="smartwrap")return amigaguide::NodeFlag::SmartWrap;if(n=="proportional")return amigaguide::NodeFlag::Proportional;return amigaguide::NodeFlag::WordWrap;}
+}
+
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent), ui_(std::make_unique<EditorUi>(this))
 {
