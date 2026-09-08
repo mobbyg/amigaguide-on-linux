@@ -58,6 +58,8 @@ if(AMIGAGUIDE_BUILD_EDITOR)
         src/editor/main.cpp
         src/editor/mainwindow.cpp
         src/editor/mainwindow.h
+        src/editor/editorui.cpp
+        src/editor/editorui.h
     )
 
     target_link_libraries(amigaguide-editor
